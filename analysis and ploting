@@ -1,0 +1,1671 @@
+# please refer to https://github.com/xnus/OMP-cooccurrence for potential undefined function
+
+library(ShortRead)
+library(Biostrings)
+library(phyloseq)
+library(vegan)
+library(ecodist)
+library(WGCNA)
+library(igraph)
+library(ggplot2)
+library(multtest)
+library(bipartite)
+library(reshape2)
+library(ape)
+library(SpiecEasi)
+library(Matrix)
+library(phangorn)
+library(ggpubr)
+library(Hmisc)
+library(minpack.lm)
+library(stats4)
+library(grid)
+library(gridExtra)
+library(export)
+library(ggpubr)
+
+
+#############
+ps.allA <- allA.ps.helt
+ps.allB <- allB.ps.helt.flt1
+ps.allF <- allF.ps.helt
+ps.allB.notflt <- allB.ps.helt
+
+env.allA <- as.data.frame(as(sample_data(ps.allA),"matrix"))
+env.allB <- as.data.frame(as(sample_data(ps.allB),"matrix"))
+env.allF <- as.data.frame(as(sample_data(ps.allF),"matrix"))
+
+##########################################################################################
+############################## map #######################################################
+##########################################################################################
+
+library(ggplot2)
+library(ggmap)
+library(maps)
+library(mapdata)
+
+map.info <- comb.samdf[,c("Location","Altitude","Latitude","Longitude")]
+map.info <- map.info[!duplicated(map.info),]
+map.bbox <- make_bbox(lon = map.info$Longitude, lat = map.info$Latitude, f = .1)
+map.sites <- get_map(location = map.bbox, maptype = "stamen_terrain", source = "stadia")
+ggmap(map.sites) + 
+	geom_point(data = map.info, mapping = aes(x = Longitude, y = Latitude), color = "red", size = 2) +
+
+##########################################################################################
+###################### stacked bar plots of top 12 abundant classes ######################
+##########################################################################################
+
+# sites arranged due to altitudes
+sitesHL <- c("Ulug", "SbsSun", "SbsShade", "Kulma", "Muztagata", "SBDLake", "KongT", "SbsBrdg7", "SbsBrdg8", "BulLake", "Gez1", "Gez2", "AktShade", "AktSun", "OytGlaShade", "OytGlaSun", "OytBrdg1")
+sitesLH <- c("OytBrdg1", "OytGlaSun", "OytGlaShade", "AktSun", "AktShade", "Gez2", "Gez1", "BulLake", "SbsBrdg8", "SbsBrdg7", "KongT", "SBDLake", "Muztagata", "Kulma", "SbsShade", "SbsSun", "Ulug")
+
+class.A <- c("Crenarchaeota", "Nitrososphaeria", "Methanobacteria", "Halobacteria", "Methanomicrobia", "Methanosarcinia", "Halobacterota", "Micrarchaeia", "Nanoarchaeia", "Nanosalinia", "Archaea")
+class.B <- c("Abditibacteria", "Acidobacteriae", "AT-s3-28", "Blastocatellia", "FFCH5909", "Holophagae", "Subgroup 11", "Subgroup 18", "Subgroup 20", "Subgroup 21", "Subgroup 22", "Subgroup 25", "Subgroup 26", "Subgroup 5", "Thermoanaerobaculia", "Vicinamibacteria", "Acidobacteriota", "Acidimicrobiia", "Actinobacteria", "Coriobacteriia", "MB-A2-108", "Rubrobacteria", "Thermoleophilia", "Actinobacteriota", "Armatimonadia", "Chthonomonadetes", "Fimbriimonadia", "Armatimonadota", "Bacteroidia", "Bacteroidota", "Ignavibacteria", "Kapabacteria", "Kryptonia", "Rhodothermia", "Bdellovibrionia", "Bdellovibrionota", "Oligoflexia", "Campylobacteria", "AD3", "Anaerolineae", "Chloroflexi", "Chloroflexia", "Dehalococcoidia", "Gitt-GS-136", "JG30-KF-CM66", "KD4-96", "Ktedonobacteria", "N9D0", "OLB14", "P2-11E", "SHA-26", "TK10", "Coprothermobacteria", "Cyanobacteriia", "Deferribacteres", "Deinococci", "Babeliae", "Desulfobacteria", "Desulfobacterota", "Desulfobulbia", "Desulfovibrionia", "Desulfuromonadia", "Syntrophia", "Elusimicrobia", "Elusimicrobiota", "Lineage IIa", "Lineage IIb", "Lineage IIc", "Entotheonellia", "Fibrobacteria", "Bacilli", "Clostridia", "Desulfotomaculia", "Firmicutes", "Limnochordia", "Negativicutes", "Symbiobacteriia", "Syntrophomonadia", "Thermoanaerobacteria", "Thermovenabulia", "Fusobacteriia", "GAL15", "AKAU4049", "BD2-11 terrestrial group", "Gemmatimonadetes", "Gemmatimonadota", "Longimicrobia", "PAUC43f marine benthic group", "S0134 terrestrial group", "Hydrogenedentia", "Latescibacterota", "Methylomirabilia", "bacteriap25", "Myxococcia", "Myxococcota", "Polyangia", "NB1-j", "Nitrospiria", "Thermodesulfovibrionia", "ABY1", "Berkelbacteria", "Gracilibacteria", "Microgenomatia", "Parcubacteria", "Patescibacteria", "Saccharimonadia", "PAUC34f", "BD7-11", "OM190", "Phycisphaerae", "Pla3 lineage", "Pla4 lineage", "Planctomycetes", "Planctomycetota", "vadinHA49", "Alphaproteobacteria", "Gammaproteobacteria", "Proteobacteria", "RCP2-54", "Brachyspirae", "MVP-15", "Spirochaetia", "Sumerlaeia", "Synergistia", "Thermotogae", "TX1A-33", "Chlamydiae", "Kiritimatiellae", "Omnitrophia", "Verrucomicrobiota", "Verrucomicrobiae", "WPS-2", "WS2", "Bacteria")
+class.F <- c("Aphelidiomycetes", "Archaeorhizomycetes", "Dothideomycetes", "Eurotiomycetes", "Laboulbeniomycetes", "Lecanoromycetes", "Leotiomycetes", "Orbiliomycetes", "Pezizomycetes", "Pezizomycotina_cls_Incertae_sedis", "Saccharomycetes", "Sordariomycetes", "Taphrinomycetes", "Ascomycota", "Agaricomycetes", "Agaricostilbomycetes", "Cystobasidiomycetes", "Exobasidiomycetes", "Geminibasidiomycetes", "Malasseziomycetes", "Microbotryomycetes", "Tremellomycetes", "Ustilaginomycetes", "Wallemiomycetes", "Basidiomycota", "Calcarisporiellomycetes", "Chytridiomycetes", "GS13", "Lobulomycetes", "Rhizophydiomycetes", "Spizellomycetes", "Synchytriomycetes", "Chytridiomycota", "Archaeosporomycetes", "Glomeromycetes", "Glomeromycota", "Mortierellomycetes", "Mortierellomycota", "Mucoromycetes", "Umbelopsidomycetes", "Olpidiomycetes", "Rozellomycota", "Rozellomycotina_cls_Incertae_sedis", "Zoopagomycetes", "Fungi")
+
+# remove unwanted taxa anotation in ps
+psrm_A_ <- function(inputps)
+{
+    temp.taxdf <- as.data.frame(as(tax_table(inputps),"matrix"))
+    temp.taxdf <- apply(temp.taxdf, 2, function(x) gsub("_A_.*","", x))
+    temp.ps.taxclean <- phyloseq(otu_table(inputps),sample_data(inputps),tax_table(as.matrix(temp.taxdf)))
+    temp.ps.taxclean
+}
+psrm_B_ <- function(inputps)
+{
+    temp.taxdf <- as.data.frame(as(tax_table(inputps),"matrix"))
+    temp.taxdf <- apply(temp.taxdf, 2, function(x) gsub("_B_.*","", x))
+    temp.ps.taxclean <- phyloseq(otu_table(inputps),sample_data(inputps),tax_table(as.matrix(temp.taxdf)))
+    temp.ps.taxclean
+}
+psrm_F_ <- function(inputps)
+{
+    temp.taxdf <- as.data.frame(as(tax_table(inputps),"matrix"))
+    temp.taxdf <- apply(temp.taxdf, 2, function(x) gsub("_F_.*","", x))
+    temp.ps.taxclean <- phyloseq(otu_table(inputps),sample_data(inputps),tax_table(as.matrix(temp.taxdf)))
+    temp.ps.taxclean
+}
+ps.allA.taxclean <- psrm_A_(ps.allA)
+ps.allB.taxclean <- psrm_B_(ps.allB)
+ps.allF.taxclean <- psrm_F_(ps.allF)
+
+# determine top12 classes
+ps.allA.site = merge_samples(ps.allA.taxclean, "Location", fun = mean)
+ps.allA.site.cla <- tax_glom(ps.allA.site, "Class", NArm = FALSE, bad_empty = "NA")
+ps.allB.site = merge_samples(ps.allB.taxclean, "Location", fun = mean)
+ps.allB.site.cla <- tax_glom(ps.allB.site, "Class", NArm = FALSE, bad_empty = "NA")
+ps.allF.site = merge_samples(ps.allF.taxclean, "Location", fun = mean)
+ps.allF.site.cla <- tax_glom(ps.allF.site, "Class", NArm = FALSE, bad_empty = "NA")
+
+pstopn <- function(inputps, topn)
+	{tempps <- inputps
+	topnls <- names(sort(taxa_sums(tempps),decreasing = TRUE))[1:topn]
+	tempps <- prune_taxa(topnls,tempps)
+	tempps
+	}
+
+ps2stack <- function (inputps, inputlevel, inputlevel.rad)
+	{
+	library(scales)
+	library(reshape2)
+	ps.df <- as.data.frame(as(otu_table(inputps), "matrix"))
+	stack.no <- dim(ps.df)[2]
+	colnames(ps.df) <- tax_table(inputps)[,"Class"]
+	ps.df$Location <- rownames(ps.df)
+	psm.df <- melt(ps.df, id.vars = c('Location'))
+	stack.gg <- ggplot(psm.df,aes(x = factor(Location, levels=inputlevel.rad), y = value, fill = factor(variable, levels=inputlevel))) + 
+		geom_bar(position = "fill",stat = "identity") + 
+		scale_y_continuous(labels = percent_format()) +
+		theme(axis.text.x = element_text(face="bold", size = 12, angle = 90, hjust = 1, vjust = 1))
+	rm(ps.df, stack.no, psm.df)
+	stack.gg
+	}
+
+ps.allA.site.cla.top12 <- pstopn(ps.allA.site.cla, 12)
+ps.allB.site.cla.top12 <- pstopn(ps.allB.site.cla, 12)
+ps.allF.site.cla.top12 <- pstopn(ps.allF.site.cla, 12)
+
+sum(taxa_sums(ps.allA.site.cla.top12))/sum(taxa_sums(ps.allA.site.cla))
+# [1] 1
+sum(taxa_sums(ps.allB.site.cla.top12))/sum(taxa_sums(ps.allB.site.cla))
+# [1] 0.7371542
+sum(taxa_sums(ps.allF.site.cla.top12))/sum(taxa_sums(ps.allF.site.cla))
+# [1] 0.9497013
+
+library(RColorBrewer)
+cols.all <- colorRampPalette(brewer.pal(12, "Paired"))
+cols.all(30)[1:6]
+cols.all(30)[7:18]
+cols.all(30)[19:30]
+
+ps.allA.site.cla.top12.RA <- transform_sample_counts(ps.allA.site.cla.top12, function(x){x / sum(x)})
+ps2stack(ps.allA.site.cla.top12.RA, class.A, sitesHL) + scale_fill_manual(values=cols.all(30)[1:6]) + scale_x_discrete(drop = FALSE)
+
+ps.allB.site.cla.top12.RA <- transform_sample_counts(ps.allB.site.cla.top12, function(x){x / sum(x)})
+ps2stack(ps.allB.site.cla.top12.RA, class.B, sitesHL) + scale_fill_manual(values=cols.all(30)[7:18]) + scale_x_discrete(drop = FALSE)
+
+ps.allF.site.cla.top12.RA <- transform_sample_counts(ps.allF.site.cla.top12, function(x){x / sum(x)})
+ps2stack(ps.allF.site.cla.top12.RA, class.F, sitesHL) + scale_fill_manual(values=cols.all(30)[19:30]) + scale_x_discrete(drop = FALSE)
+
+# RA of classes
+100*colSums(otu_table(ps.allA.site.cla))/sum(otu_table(ps.allA.site.cla));tax_table(ps.allA.site.cla)
+100*colSums(otu_table(ps.allB.site.cla))/sum(otu_table(ps.allB.site.cla));tax_table(ps.allB.site.cla)
+100*colSums(otu_table(ps.allF.site.cla))/sum(otu_table(ps.allF.site.cla));tax_table(ps.allF.site.cla)
+
+##########################################################################################
+############################## richness level ############################################
+##########################################################################################
+
+ps2alphadiv <- function(inputps)
+{
+	tempdf <- as.data.frame(as(otu_table(inputps),"matrix"))
+	tempdivdf <- as.data.frame(sample_data(inputps))
+	tempdivdf$H <- vegan::diversity(tempdf)  
+	tempdivdf$S <- vegan::specnumber(tempdf) 
+	tempdivdf$J <- tempdivdf$H/log(tempdivdf$S)
+	tempdivdf$alpha <- vegan::fisher.alpha(round(1000*tempdf))  
+	tempdivdf$simp <- vegan::diversity(tempdf, "simpson")
+	tempdivdf$invsimp <- vegan::diversity(tempdf, "inv")
+	tempdivdf$unbias.simp <- vegan::rarefy(round(1000*tempdf), 2) - 1
+	tempdivdf
+}
+
+alphadiv.allA <- ps2alphadiv(ps.allA)
+alphadiv.allB <- ps2alphadiv(ps.allB)
+alphadiv.allF <- ps2alphadiv(ps.allF)
+
+ps2betadiv.Location <- function(inputps)
+{
+	tempdf <- as.data.frame(as(otu_table(inputps),"matrix"))
+	tempsmdf <- as.data.frame(sample_data(inputps))
+	tempalpha <- with(tempsmdf, tapply(specnumber(tempdf), Location, mean))
+	tempgamma <- with(tempsmdf, specnumber(tempdf, Location))
+	tempbetadf <- as.data.frame(tempalpha)
+	tempbetadf <- cbind(tempbetadf, as.data.frame(tempgamma))
+	tempbetadf$beta <- tempbetadf$tempgamma/tempbetadf$tempalpha - 1
+	tempbetadf
+}
+
+betadiv.L.allA <- ps2betadiv.Location(ps.allA)
+betadiv.L.allB <- ps2betadiv.Location(ps.allB)
+betadiv.L.allF <- ps2betadiv.Location(ps.allF)
+
+library(ggpubr)
+ggarrange(
+    ggplot(alphadiv.allA, aes(x=factor(Location, levels=sitesLH), y=H)) + 
+        geom_boxplot(color=cols.all(30)[3], fill=cols.all(30)[2]) + 
+        labs(title="",x="Sampling sites", y = "Shannon index") + 
+        lims(x = factor(sitesLH, levels=sitesLH)) +
+        coord_flip(),
+    ggplot(alphadiv.allB, aes(x=factor(Location, levels=sitesLH), y=H)) + 
+        geom_boxplot(color=cols.all(30)[13], fill=cols.all(30)[12]) + 
+        labs(title="",x="Sampling sites", y = "Shannon index") + 
+        lims(x = factor(sitesLH, levels=sitesLH)) +
+        coord_flip(),
+    ggplot(alphadiv.allF, aes(x=factor(Location, levels=sitesLH), y=H)) + 
+        geom_boxplot(color=cols.all(30)[24], fill=cols.all(30)[23]) + 
+        labs(title="",x="Sampling sites", y = "Shannon index") + 
+        lims(x = factor(sitesLH, levels=sitesLH)) +
+        coord_flip(),
+    ncol = 3, nrow = 1)
+
+# S: Species richness
+ggarrange(
+ggplot(alphadiv.allA, aes(x=factor(Location, levels=sitesLH), y=S)) + 
+	geom_boxplot(color=cols.all(30)[3], fill=cols.all(30)[2]) + 
+	labs(title="",x="Sampling sites", y = "Species richness") + 
+	lims(x = factor(sitesLH, levels=sitesLH)) +
+	coord_flip(),
+ggplot(alphadiv.allB, aes(x=factor(Location, levels=sitesLH), y=S)) + 
+	geom_boxplot(color=cols.all(30)[13], fill=cols.all(30)[12]) + 
+	labs(title="",x="Sampling sites", y = "Species richness") + 
+	lims(x = factor(sitesLH, levels=sitesLH)) +
+	coord_flip(),
+ggplot(alphadiv.allF, aes(x=factor(Location, levels=sitesLH), y=S)) + 
+	geom_boxplot(color=cols.all(30)[24], fill=cols.all(30)[23]) + 
+	labs(title="",x="Sampling sites", y = "Species richness") + 
+	lims(x = factor(sitesLH, levels=sitesLH)) +
+	coord_flip(),
+	ncol = 3, nrow = 1)
+
+# simp: Simpson's index
+ggarrange(
+ggplot(alphadiv.allA, aes(x=factor(Location, levels=sitesLH), y=simp)) + 
+	geom_boxplot(color=cols.all(30)[3], fill=cols.all(30)[2]) + 
+	labs(title="",x="Sampling sites", y = "Simpson's index") + 
+	lims(x = factor(sitesLH, levels=sitesLH)) +
+	coord_flip(),
+ggplot(alphadiv.allB, aes(x=factor(Location, levels=sitesLH), y=simp)) + 
+	geom_boxplot(color=cols.all(30)[13], fill=cols.all(30)[12]) + 
+	labs(title="",x="Sampling sites", y = "Simpson's index") + 
+	lims(x = factor(sitesLH, levels=sitesLH)) +
+	coord_flip(),
+ggplot(alphadiv.allF, aes(x=factor(Location, levels=sitesLH), y=simp)) + 
+	geom_boxplot(color=cols.all(30)[24], fill=cols.all(30)[23]) + 
+	labs(title="",x="Sampling sites", y = "Simpson's index") + 
+	lims(x = factor(sitesLH, levels=sitesLH)) +
+	coord_flip(),
+	ncol = 3, nrow = 1)
+
+
+##########################################################################################
+############################## core microbiome ###########################################
+##########################################################################################
+# see branch "Core_taxa" for functions
+
+# allA
+sitepsls.allA <- ps2sitepsls(ps.allA)
+TierNCorepslsls.allA.0.100 <- psls2TierNCorepslsls(sitepsls.allA,0,100)
+taxdfls.TierNCorepslsls.allA.0.100 <- counttaxdfls(TierNCorepslsls.allA.0.100, "Species")
+Coretaxls.TierNCorepslsls.allA.0.100 <- taxdfls2Coretaxls(taxdfls.TierNCorepslsls.allA.0.100)
+
+replist.ps.allA.N5.S100 <- mkreplist(ps.allA, 5, 100)
+TierNCorepslsls.allA.N5.S100.0.100 <- psls2TierNCorepslsls(replist.ps.allA.N5.S100,0,100)
+taxdfls.TierNCorepslsls.allA.N5.S100.0.100 <- counttaxdfls(TierNCorepslsls.allA.N5.S100.0.100, "Species")
+Coretaxls.TierNCorepslsls.allA.N5.S100.0.100 <- taxdfls2Coretaxls(taxdfls.TierNCorepslsls.allA.N5.S100.0.100)
+
+compareCoreRA.TierNCorepslsls.allA.0.100 <- compareCoreRA(ps.allA, Coretaxls.TierNCorepslsls.allA.0.100, Coretaxls.TierNCorepslsls.allA.N5.S100.0.100)
+compareCoretaxls.TierNCorepslsls.allA.0.100 <- compareCoretaxls(Coretaxls.TierNCorepslsls.allA.0.100, Coretaxls.TierNCorepslsls.allA.N5.S100.0.100)
+
+CoreDataCombine.TierNCorepslsls.allA.0.100 <- cbind(compareCoretaxls.TierNCorepslsls.allA.0.100, compareCoreRA.TierNCorepslsls.allA.0.100)
+plotCoreDataCombine(CoreDataCombine.TierNCorepslsls.allA.0.100, "#1F78B4", "#A6CEE3")
+
+# allB
+sitepsls.allB <- ps2sitepsls(ps.allB)
+TierNCorepslsls.allB.0.100 <- psls2TierNCorepslsls(sitepsls.allB,0,100)
+taxdfls.TierNCorepslsls.allB.0.100 <- counttaxdfls(TierNCorepslsls.allB.0.100, "Species")
+Coretaxls.TierNCorepslsls.allB.0.100 <- taxdfls2Coretaxls(taxdfls.TierNCorepslsls.allB.0.100)
+
+replist.ps.allB.N5.S100 <- mkreplist(ps.allB, 5, 100)
+TierNCorepslsls.allB.N5.S100.0.100 <- psls2TierNCorepslsls(replist.ps.allB.N5.S100,0,100)
+taxdfls.TierNCorepslsls.allB.N5.S100.0.100 <- counttaxdfls(TierNCorepslsls.allB.N5.S100.0.100, "Species")
+Coretaxls.TierNCorepslsls.allB.N5.S100.0.100 <- taxdfls2Coretaxls(taxdfls.TierNCorepslsls.allB.N5.S100.0.100)
+
+compareCoreRA.TierNCorepslsls.allB.0.100 <- compareCoreRA(ps.allB, Coretaxls.TierNCorepslsls.allB.0.100, Coretaxls.TierNCorepslsls.allB.N5.S100.0.100)
+compareCoretaxls.TierNCorepslsls.allB.0.100 <- compareCoretaxls(Coretaxls.TierNCorepslsls.allB.0.100, Coretaxls.TierNCorepslsls.allB.N5.S100.0.100)
+
+CoreDataCombine.TierNCorepslsls.allB.0.100 <- cbind(compareCoretaxls.TierNCorepslsls.allB.0.100, compareCoreRA.TierNCorepslsls.allB.0.100)
+plotCoreDataCombine(CoreDataCombine.TierNCorepslsls.allB.0.100, "#E31A1C", "#FB9A99")
+
+# allF
+sitepsls.allF <- ps2sitepsls(ps.allF)
+TierNCorepslsls.allF.0.100 <- psls2TierNCorepslsls(sitepsls.allF,0,100)
+taxdfls.TierNCorepslsls.allF.0.100 <- counttaxdfls(TierNCorepslsls.allF.0.100, "Species")
+Coretaxls.TierNCorepslsls.allF.0.100 <- taxdfls2Coretaxls(taxdfls.TierNCorepslsls.allF.0.100)
+
+replist.ps.allF.N5.S100 <- mkreplist(ps.allF, 5, 100)
+TierNCorepslsls.allF.N5.S100.0.100 <- psls2TierNCorepslsls(replist.ps.allF.N5.S100,0,100)
+taxdfls.TierNCorepslsls.allF.N5.S100.0.100 <- counttaxdfls(TierNCorepslsls.allF.N5.S100.0.100, "Species")
+Coretaxls.TierNCorepslsls.allF.N5.S100.0.100 <- taxdfls2Coretaxls(taxdfls.TierNCorepslsls.allF.N5.S100.0.100)
+
+compareCoreRA.TierNCorepslsls.allF.0.100 <- compareCoreRA(ps.allF, Coretaxls.TierNCorepslsls.allF.0.100, Coretaxls.TierNCorepslsls.allF.N5.S100.0.100)
+compareCoretaxls.TierNCorepslsls.allF.0.100 <- compareCoretaxls(Coretaxls.TierNCorepslsls.allF.0.100, Coretaxls.TierNCorepslsls.allF.N5.S100.0.100)
+
+CoreDataCombine.TierNCorepslsls.allF.0.100 <- cbind(compareCoretaxls.TierNCorepslsls.allF.0.100, compareCoreRA.TierNCorepslsls.allF.0.100)
+plotCoreDataCombine(CoreDataCombine.TierNCorepslsls.allF.0.100, "#6A3D9A", "#CAB2D6")
+
+
+##########################################################################################
+############### correlation among environmental factors ##################################
+##########################################################################################
+
+env.unique <- comb.samdf[, !colnames(comb.samdf) %in% c("Location","Replicates","Samples","Latitude","Longitude", "SampID")]
+env.unique <- env.unique[, !colnames(env.unique) %in% c("Mean.Temperature.of.Warmest.Quarter", "Mean.Temperature.of.Coldest.Quarter", "Precipitation.of.Wettest.Month", "Precipitation.of.Driest.Month", "Precipitation.of.Wettest.Quarter", "Precipitation.of.Driest.Quarter", "Precipitation.of.Warmest.Quarter", "Precipitation.of.Coldest.Quarter", "Max.Temperature.of.Warmest.Month", "Min.Temperature.of.Coldest.Month", "Temperature.Annual.Range", "Mean.Temperature.of.Wettest.Quarter", "Mean.Temperature.of.Driest.Quarter", "January", "February", "March", "April", "May", "August", "September", "October", "November", "December", "Range")]
+env.unique <- env.unique[, !colnames(env.unique) %in% c("UV","Temp","Mean.Diurnal.Range","Isothermality","Elevation","Max","Min")]
+
+env.unique <- env.unique[!duplicated(env.unique),]
+
+env.pearson <- cor(env.unique)
+round(env.pearson,2)
+
+library(gclus)
+env.o <- order.single(env.pearson)
+
+library(MESS)
+pairs(env.unique[,env.o], 
+	lower.panel=panel.smooth, upper.panel=panel.cor, 
+	diag.panel=panel.hist, main="Pearson correlation coefficient rho")
+
+pdf("Pearson correlation coefficient rho.pdf", height = 600, width = 600)
+par(mar = c(1, 1, 1, 1))
+pairs(env.unique[,env.o], 
+	lower.panel=panel.smooth, upper.panel=panel.cor, 
+	diag.panel=panel.hist, main="Pearson correlation coefficient rho")
+dev.off()
+
+# Kendall's tau
+env.ken <- cor(env.unique, method="kendall")
+env.o <- order.single(env.ken)
+pairs(env.unique[,env.o], 
+	lower.panel=panel.smooth, upper.panel=panel.cor, 
+	no.col=TRUE, method = "kendall",
+	diag.panel=panel.hist, main="Kendall correlation coefficient tau")
+
+##########################################################################################
+######### NMDS, geographic distances and spatial auto-correlation ########################
+##########################################################################################
+
+ps2df <- function(inputps)
+	{tempdf <- as.data.frame(as(otu_table(inputps), "matrix"))
+	colnames(tempdf) <- as(tax_table(inputps), "matrix")[,"Species"]
+	tempdf
+	}
+
+ps2geolm <- function(inputps)
+	{
+	# library(PCNM)
+	library(SoDA)
+	library(reshape2)
+	tempdf <- ps2df(inputps)
+	tempenv <- as.data.frame(as(sample_data(inputps),"matrix"))
+	tempdfdist <- as.matrix(vegdist(tempdf, method = "bray"))
+	tempgeodist <- as.matrix(vegdist(geoXY(as.numeric(as.vector(tempenv$Longitude)),as.numeric(as.vector(tempenv$Longitude)),unit = 1000), method = "euclidean")) # geoXY后面必须跟numeric
+	tempdfdist[upper.tri(tempdfdist, diag = TRUE)] <- NA
+	tempgeodist[upper.tri(tempgeodist, diag = TRUE)] <- NA
+	temppair <- cbind(melt(tempdfdist, na.rm = TRUE, value.name = "dfdist")["dfdist"],
+		melt(tempgeodist, na.rm = TRUE, value.name = "geodist")["geodist"])
+	tempinter <- temppair[temppair$geodist != 0,]
+	tempinter
+	}
+
+dfgeodistpair.allA <- ps2geolm(ps.allA)
+dfgeodistpair.allB <- ps2geolm(ps.allB)
+dfgeodistpair.allF <- ps2geolm(ps.allF)
+
+summary(lm(dfdist ~ geodist, data = dfgeodistpair.allA))
+# Residuals:
+#      Min       1Q   Median       3Q      Max 
+# -0.58991 -0.07315  0.01966  0.09521  0.22046 
+# Coefficients:
+#              Estimate Std. Error t value Pr(>|t|)    
+# (Intercept) 7.639e-01  3.887e-03 196.523   <2e-16 ***
+# geodist     9.367e-04  9.938e-05   9.426   <2e-16 ***
+# Residual standard error: 0.1323 on 3006 degrees of freedom
+# Multiple R-squared:  0.02871,	Adjusted R-squared:  0.02838 
+# F-statistic: 88.84 on 1 and 3006 DF,  p-value: < 2.2e-16
+y = 0.7639 + 0.0009367x
+R2 = 0.02838 
+p < 0.001
+summary(lm(dfdist ~ geodist, data = dfgeodistpair.allB))
+# Residuals:
+#      Min       1Q   Median       3Q      Max 
+# -0.21845 -0.02848  0.00181  0.03367  0.11242 
+# Coefficients:
+#              Estimate Std. Error t value Pr(>|t|)    
+# (Intercept) 8.875e-01  1.459e-03  608.31   <2e-16 ***
+# geodist     6.596e-04  3.819e-05   17.27   <2e-16 ***
+# Residual standard error: 0.05001 on 3007 degrees of freedom
+# Multiple R-squared:  0.09023,	Adjusted R-squared:  0.08993 
+# F-statistic: 298.2 on 1 and 3007 DF,  p-value: < 2.2e-16
+y = 0.8875 + 0.0006596x
+R2 = 0.08993 
+p < 0.001
+summary(lm(dfdist ~ geodist, data = dfgeodistpair.allF))
+# Residuals:
+#      Min       1Q   Median       3Q      Max 
+# -0.32148 -0.04052  0.01824  0.05914  0.15351 
+# Coefficients:
+#              Estimate Std. Error t value Pr(>|t|)    
+# (Intercept) 8.181e-01  2.394e-03  341.77   <2e-16 ***
+# geodist     7.631e-04  6.219e-05   12.27   <2e-16 ***
+# Residual standard error: 0.08215 on 3008 degrees of freedom
+# Multiple R-squared:  0.04766,	Adjusted R-squared:  0.04734 
+# F-statistic: 150.5 on 1 and 3008 DF,  p-value: < 2.2e-16
+y = 0.8181 + 0.0007631x
+R2 = 0.04734
+p < 0.001
+
+par(mfrow=c(3,1))
+plot(dfgeodistpair.allA$geodist,dfgeodistpair.allA$dfdist, col = "#1F78B4", main="Archaea", xlab="Geographic distance (km)", ylab="Bray–Curtis dissimilarity");
+abline(lm(dfdist ~ geodist, data = dfgeodistpair.allA))
+plot(dfgeodistpair.allB$geodist,dfgeodistpair.allB$dfdist, col = "#E31A1C", main="Bacteria", xlab="Geographic distance (km)", ylab="Bray–Curtis dissimilarity");
+abline(lm(dfdist ~ geodist, data = dfgeodistpair.allB))
+plot(dfgeodistpair.allF$geodist,dfgeodistpair.allF$dfdist, col = "#6A3D9A", main="Fungi", xlab="Geographic distance (km)", ylab="Bray–Curtis dissimilarity");
+abline(lm(dfdist ~ geodist, data = dfgeodistpair.allF))
+par(mfrow=c(1,1))
+
+env.allA <- as.data.frame(as(sample_data(ps.allA),"matrix"))
+env.allB <- as.data.frame(as(sample_data(ps.allB),"matrix"))
+env.allF <- as.data.frame(as(sample_data(ps.allF),"matrix"))
+
+ps2NMDS <- function(inputps, inputdist)
+	{
+	tempdf <- as.data.frame(as(otu_table(inputps),"matrix"))
+	tempnmds <- vegan::metaMDS(tempdf, distance = inputdist,trace = FALSE)
+	tempnmds
+	}
+
+nmds.ps.allA.b <- ps2NMDS(ps.allA, "bray")
+ef.ps.allA.b <- envfit(nmds.ps.allA.b, env.allA[,c("pH", "Altitude", "TOM", "AP", "AK", "SSalt", "TN", "AN")])
+nmds.ps.allB.b <- ps2NMDS(ps.allB, "bray")
+ef.ps.allB.b <- envfit(nmds.ps.allB.b, env.allB[,c("Altitude", "AP", "SSalt", "TOM", "AK", "TN", "pH", "AN")])
+nmds.ps.allF.b <- ps2NMDS(ps.allF, "bray")
+ef.ps.allF.b <- envfit(nmds.ps.allF.b, env.allF[,c("Altitude", "SSalt", "AP", "TOM", "AK", "TN", "pH", "AN")])
+
+nmds2plot2 <- function (inputnmds, inputenv)
+	{
+	temp.nmdsplot <- as.data.frame(scores(inputnmds)$sites)
+	temp.nmdsplot$Rad <- inputenv$Rad
+	temp.nmdsplot$tissue <- inputenv$tissue
+	temp.nmdsplot.gg<- ggplot(temp.nmdsplot, aes(x=NMDS1, y=NMDS2, shape = tissue, color = Rad)) + stat_ellipse(aes(x=NMDS1, y=NMDS2, group=tissue)) + geom_point()
+	rm(temp.nmdsplot)
+	temp.nmdsplot.gg
+	}
+nmds2plot1.Site <- function (inputnmds, inputenv)
+	{
+	temp.nmdsplot <- as.data.frame(scores(inputnmds)$sites)
+	temp.nmdsplot$Location <- inputenv$Location
+	temp.nmdsplot.gg<- ggplot(temp.nmdsplot, aes(x=NMDS1, y=NMDS2, color = Location)) + geom_point()
+	rm(temp.nmdsplot)
+	temp.nmdsplot.gg
+	}
+
+nmds.gg.ps.allA.Site.b <- nmds2plot1.Site(nmds.ps.allA.b, env.allA)
+nmds.gg.ps.allB.Site.b <- nmds2plot1.Site(nmds.ps.allB.b, env.allB)
+nmds.gg.ps.allF.Site.b <- nmds2plot1.Site(nmds.ps.allF.b, env.allF)
+
+Site.col <- env.allB[,c("Location","Altitude")]
+Site.col <- unique(Site.col)
+Site.col <- Site.col[order(Site.col$Altitude, decreasing = TRUE),]
+Site.col <- unique(Site.col$Location)
+
+Site.col.allA <- data.frame(Site = Site.col, Site.col = colorRampPalette(c("#A6CEE3", "#002060"))(17))
+Site.col.allB <- data.frame(Site = Site.col, Site.col = colorRampPalette(c("#FB9A99", "#c00000"))(17))
+Site.col.allF <- data.frame(Site = Site.col, Site.col = colorRampPalette(c("#CAB2D6", "#4f216d"))(17))
+
+nmds.gg.ps.allA.Site.b + scale_color_manual(values = Site.col.allA$Site.col)
+nmds.gg.ps.allB.Site.b + scale_color_manual(values = Site.col.allB$Site.col)
+nmds.gg.ps.allF.Site.b + scale_color_manual(values = Site.col.allF$Site.col)
+
+ggarrange(
+nmds.gg.ps.allA.Site.b + scale_color_manual(values = Site.col.allA$Site.col),
+nmds.gg.ps.allB.Site.b + scale_color_manual(values = Site.col.allB$Site.col),
+nmds.gg.ps.allF.Site.b + scale_color_manual(values = Site.col.allF$Site.col),
+	ncol = 1, nrow = 3)
+
+# NMDS colorred with environmental gradients
+
+assigncolor <- function(inputenv, inputfactor, inputcol1, inputcol2)
+{
+	temp.col <- inputenv[, c("Location", inputfactor)]
+	temp.col <- unique(temp.col)
+	temp.col[, inputfactor] <- as.numeric(temp.col[, inputfactor])
+	temp.col <- temp.col[order(temp.col[, inputfactor], decreasing = FALSE),]
+	temp.col <- data.frame(temp.col, Intvl.col = colorRampPalette(c(inputcol1, inputcol2))(17))
+	temp.col
+}
+
+SSalt.col.allA <- assigncolor(env.allA, "SSalt", "#A6CEE3", "#1F78B4")
+TN.col.allA <- assigncolor(env.allA, "TN", "#A6CEE3", "#1F78B4")
+pH.col.allA <- assigncolor(env.allA, "pH", "#A6CEE3", "#1F78B4")
+PPS.col.allA <- assigncolor(env.allA, "Precipitation.Seasonality", "#A6CEE3", "#1F78B4")
+AN.col.allA <- assigncolor(env.allA, "AN", "#A6CEE3", "#1F78B4")
+
+PPS.col.allB <- assigncolor(env.allB, "Precipitation.Seasonality", "#FB9A99", "#E31A1C")
+Moisture.col.allB <- assigncolor(env.allB, "Moisture", "#FB9A99", "#E31A1C")
+
+TN.col.allF <- assigncolor(env.allF, "TN", "#CAB2D6", "#6A3D9A")
+Moisture.col.allF <- assigncolor(env.allF, "Moisture", "#CAB2D6", "#6A3D9A")
+TOM.col.allF <- assigncolor(env.allF, "TOM", "#CAB2D6", "#6A3D9A")
+SSalt.col.allF <- assigncolor(env.allF, "SSalt", "#CAB2D6", "#6A3D9A")
+AN.col.allF <- assigncolor(env.allF, "AN", "#CAB2D6", "#6A3D9A")
+
+
+nmds2plot.EnvFact <- function (inputnmds, inputenv, inputfactor, inputcol1, inputcol2, inputlegendtitle)
+	{
+	temp.nmdsplot <- as.data.frame(scores(inputnmds)$sites)
+	temp.nmdsplot <- cbind(temp.nmdsplot, inputenv[,c("Location", inputfactor)])
+	temp.nmdsplot[, inputfactor] <- as.numeric(temp.nmdsplot[, inputfactor])
+	temp.nmdsplot.gg<- ggplot(temp.nmdsplot, aes(NMDS1, NMDS2)) +
+		geom_point(aes(color = get(inputfactor))) + 
+		scale_color_gradient(low = inputcol1, high = inputcol2, name = inputlegendtitle)
+	rm(temp.nmdsplot)
+	temp.nmdsplot.gg
+	}
+
+nmds2plot.EnvFact(nmds.ps.allA.b, env.allA, "SSalt", "#A6CEE3", "#002060", "SSalt")
+nmds2plot.EnvFact(nmds.ps.allA.b, env.allA, "TN", "#A6CEE3", "#002060", "TN")
+nmds2plot.EnvFact(nmds.ps.allA.b, env.allA, "pH", "#A6CEE3", "#002060", "pH")
+nmds2plot.EnvFact(nmds.ps.allA.b, env.allA, "Precipitation.Seasonality", "#A6CEE3", "#002060", "PPS")
+nmds2plot.EnvFact(nmds.ps.allA.b, env.allA, "AN", "#A6CEE3", "#002060", "AN")
+
+nmds2plot.EnvFact(nmds.ps.allB.b, env.allB, "Precipitation.Seasonality", "#FB9A99", "#c00000", "PPS")
+nmds2plot.EnvFact(nmds.ps.allB.b, env.allB, "Moisture", "#FB9A99", "#c00000", "Moisture")
+
+nmds2plot.EnvFact(nmds.ps.allF.b, env.allF, "TN", "#CAB2D6", "#4f216d", "TN")
+nmds2plot.EnvFact(nmds.ps.allF.b, env.allF, "Moisture", "#CAB2D6", "#4f216d", "Moisture")
+nmds2plot.EnvFact(nmds.ps.allF.b, env.allF, "TOM", "#CAB2D6", "#4f216d", "TOM")
+nmds2plot.EnvFact(nmds.ps.allF.b, env.allF, "SSalt", "#CAB2D6", "#4f216d", "SSalt")
+nmds2plot.EnvFact(nmds.ps.allF.b, env.allF, "AN", "#CAB2D6", "#4f216d", "AN")
+
+##########################################################################################
+################################# network analysis #######################################
+##########################################################################################
+
+# see branch "OMP-based co-occurrence" for functions
+
+edgels.bi.allA <- ps2edgels.bi(ps.allA)
+edgels.bi.allB <- ps2edgels.bi(ps.allB)
+edgels.bi.allF <- ps2edgels.bi(ps.allF)
+
+edgels.allA <- ps2edgels(ps.allA)
+edgels.allB <- ps2edgels(ps.allB)
+edgels.allF <- ps2edgels(ps.allF)
+
+edgels.bi.allA.001.80 <- edgefltr(edgels.bi.allA, 0.001, 0.8, -0.8)
+edgels.bi.allB.001.80 <- edgefltr(edgels.bi.allB, 0.001, 0.8, -0.8)
+edgels.bi.allF.001.80 <- edgefltr(edgels.bi.allF, 0.001, 0.8, -0.8)
+
+edgels.allA.001.80 <- edgefltr(edgels.allA, 0.001, 0.8, -0.8)
+edgels.allB.001.80 <- edgefltr(edgels.allB, 0.001, 0.8, -0.8)
+edgels.allF.001.80 <- edgefltr(edgels.allF, 0.001, 0.8, -0.8)
+
+addEVattribute <- function(inputedgelist, inputps)
+{
+	temp.igraph <- graph_from_edgelist(as.matrix(inputedgelist[,1:2]), directed = FALSE)
+    # temp.nodels <- unique(c(inputedgelist$ASV1, inputedgelist$ASV2))
+    tempdf <- as.data.frame(as(otu_table(inputps),"matrix"))
+    temp.taxinfo <- as.data.frame(tax_table(inputps))
+    temp.taxinfo <- temp.taxinfo[temp.taxinfo$Species %in% names(V(temp.igraph)),]
+    temp.taxinfo$taxid <- rownames(temp.taxinfo)
+    rownames(temp.taxinfo) <- temp.taxinfo$Species
+    temp.taxinfo <- cbind(temp.taxinfo, data.frame(abund = apply(tempdf[,colnames(tempdf) %in% temp.taxinfo$taxid],2,sum)))
+    temp.taxinfo$RA <- 100*temp.taxinfo$abund/sum(tempdf)
+	V(temp.igraph)$RA <- temp.taxinfo[,"RA"]
+	V(temp.igraph)$abund <- temp.taxinfo[,"abund"]
+	V(temp.igraph)$Species <- as.character(temp.taxinfo[,"Species"])
+	# V(temp.igraph)$colnode <- inputcolnode[round(100*V(temp.igraph)$ra)+1] # 这里需要+1，不然当ra四舍五入为0的时候就会出错，变成最高值。
+	E(temp.igraph)$weight <- inputedgelist$rho
+	E(temp.igraph)$weight <- NA
+	temp.igraph
+}
+
+
+igraph.edgels.bi.allA.001.80 <- addEVattribute(edgels.bi.allA.001.80, ps.allA)
+igraph.edgels.bi.allB.001.80 <- addEVattribute(edgels.bi.allB.001.80, ps.allB)
+igraph.edgels.bi.allF.001.80 <- addEVattribute(edgels.bi.allF.001.80, ps.allF)
+
+igraph.edgels.allA.001.80 <- addEVattribute(edgels.allA.001.80, ps.allA)
+igraph.edgels.allB.001.80 <- addEVattribute(edgels.allB.001.80, ps.allB)
+igraph.edgels.allF.001.80 <- addEVattribute(edgels.allF.001.80, ps.allF)
+
+# network visualization is conducted in Gephi.
+
+node.property <- function(inputedgelsls)
+{
+	temp.nprpls <- list(NULL)
+	for (i in 1:length(inputedgelsls))
+	{
+		if (is.data.frame(inputedgelsls[[i]]))
+		{
+			temp.graph <- graph_from_edgelist(as.matrix(inputedgelsls[[i]][,1:2]),directed = FALSE)
+			tempdf <- data.frame(Degree = igraph::degree(temp.graph),
+				Closeness = igraph::closeness(temp.graph),
+				Eigenvector = igraph::eigen_centrality(temp.graph)$vector,
+				Betweenness = igraph::betweenness(temp.graph),
+				Hubs = igraph::hub_score(temp.graph, weights=NA)$vector,
+				Authoritys = igraph::authority_score(temp.graph, weights=NA)$vector,
+				Hcentrality = igraph::harmonic_centrality(temp.graph, mode = "all"))
+				
+			temp.nprpls[[i]] <- tempdf
+		}
+		else 
+		{temp.nprpls[[i]] <- NA}
+	}
+	temp.nprpls
+}
+
+Nodepropls.edgels.bi.all.001.80 <- node.property(list(edgels.bi.allA.001.80,edgels.bi.allB.001.80,edgels.bi.allF.001.80))
+
+# ploting: abundance vs vertex property
+Nodepropls.edgels.bi.allA.001.80 <- Nodepropls.edgels.bi.all.001.80[[1]]
+Nodepropls.edgels.bi.allB.001.80 <- Nodepropls.edgels.bi.all.001.80[[2]]
+Nodepropls.edgels.bi.allF.001.80 <- Nodepropls.edgels.bi.all.001.80[[3]]
+
+tax.ab.allA <- as.data.frame(as(otu_table(ps.allA),"matrix"))
+colnames(tax.ab.allA) <- as.data.frame(tax_table(ps.allA))[,dim(tax_table(ps.allA))[2]]
+tax.ab.allA <- as.data.frame(t(tax.ab.allA)); tax.ab.allA$Abudance <- rowSums(tax.ab.allA)
+tax.ab.allA$Species <- rownames(tax.ab.allA); tax.ab.allA <- tax.ab.allA[,c("Abudance", "Species")]
+tax.ab.allA <- merge(tax.ab.allA, as.data.frame(tax_table(ps.allA)), by.x = "Species")
+Nodepropls.edgels.bi.allA.001.80$Species <- rownames(Nodepropls.edgels.bi.allA.001.80)
+Nodepropls.edgels.bi.allA.001.80 <- merge(Nodepropls.edgels.bi.allA.001.80, tax.ab.allA,by.x = "Species")
+Nodepropls.edgels.bi.allA.001.80$lnAb <- log(Nodepropls.edgels.bi.allA.001.80$Abudance)
+Nodepropls.edgels.bi.allA.001.80$log10Ab <- log10(Nodepropls.edgels.bi.allA.001.80$Abudance)
+
+Nodepropls.ClassCol.allA <- merge(as.data.frame(tax_table(ps.allA.site.cla.top12.RA)), data.frame(Class = class.A, id = 1:length(class.A)), by = "Class")
+Nodepropls.ClassCol.allA <- Nodepropls.ClassCol.allA[order(Nodepropls.ClassCol.allA$id), ]
+Nodepropls.ClassCol.allA$Color <- cols.all(30)[1:6]
+Nodepropls.ClassCol.allA <- Nodepropls.ClassCol.allA[,c("Class", "Color")]
+
+Nodepropls.edgels.bi.allA.001.80 <- merge(Nodepropls.edgels.bi.allA.001.80, Nodepropls.ClassCol.allA, by.x = "Class", all.x = TRUE)
+
+
+tax.ab.allB <- as.data.frame(as(otu_table(ps.allB),"matrix"))
+colnames(tax.ab.allB) <- as.data.frame(tax_table(ps.allB))[,dim(tax_table(ps.allB))[2]]
+tax.ab.allB <- as.data.frame(t(tax.ab.allB)); tax.ab.allB$Abudance <- rowSums(tax.ab.allB)
+tax.ab.allB$Species <- rownames(tax.ab.allB); tax.ab.allB <- tax.ab.allB[,c("Abudance", "Species")]
+tax.ab.allB <- merge(tax.ab.allB, as.data.frame(tax_table(ps.allB)), by.x = "Species")
+Nodepropls.edgels.bi.allB.001.80$Species <- rownames(Nodepropls.edgels.bi.allB.001.80)
+Nodepropls.edgels.bi.allB.001.80 <- merge(Nodepropls.edgels.bi.allB.001.80, tax.ab.allB,by.x = "Species")
+Nodepropls.edgels.bi.allB.001.80$lnAb <- log(Nodepropls.edgels.bi.allB.001.80$Abudance)
+Nodepropls.edgels.bi.allB.001.80$log10Ab <- log10(Nodepropls.edgels.bi.allB.001.80$Abudance)
+
+Nodepropls.ClassCol.allB <- merge(as.data.frame(tax_table(ps.allB.site.cla.top12.RA)), data.frame(Class = class.B, id = 1:length(class.B)), by = "Class")
+Nodepropls.ClassCol.allB <- Nodepropls.ClassCol.allB[order(Nodepropls.ClassCol.allB$id), ]
+Nodepropls.ClassCol.allB$Color <- cols.all(30)[7:18]
+Nodepropls.ClassCol.allB <- Nodepropls.ClassCol.allB[,c("Class", "Color")]
+
+Nodepropls.edgels.bi.allB.001.80$Class <- gsub("_.*","", Nodepropls.edgels.bi.allB.001.80$Class)
+
+Nodepropls.edgels.bi.allB.001.80 <- merge(Nodepropls.edgels.bi.allB.001.80, Nodepropls.ClassCol.allB, by.x = "Class", all.x = TRUE)
+Nodepropls.edgels.bi.allB.001.80$Color[is.na(Nodepropls.edgels.bi.allB.001.80$Color)] <- "#969696"
+
+
+tax.ab.allF <- as.data.frame(as(otu_table(ps.allF),"matrix"))
+colnames(tax.ab.allF) <- as.data.frame(tax_table(ps.allF))[,dim(tax_table(ps.allF))[2]]
+tax.ab.allF <- as.data.frame(t(tax.ab.allF)); tax.ab.allF$Abudance <- rowSums(tax.ab.allF)
+tax.ab.allF$Species <- rownames(tax.ab.allF); tax.ab.allF <- tax.ab.allF[,c("Abudance", "Species")]
+tax.ab.allF <- merge(tax.ab.allF, as.data.frame(tax_table(ps.allF)), by.x = "Species")
+Nodepropls.edgels.bi.allF.001.80$Species <- rownames(Nodepropls.edgels.bi.allF.001.80)
+Nodepropls.edgels.bi.allF.001.80 <- merge(Nodepropls.edgels.bi.allF.001.80, tax.ab.allF,by.x = "Species")
+Nodepropls.edgels.bi.allF.001.80$lnAb <- log(Nodepropls.edgels.bi.allF.001.80$Abudance)
+Nodepropls.edgels.bi.allF.001.80$log10Ab <- log10(Nodepropls.edgels.bi.allF.001.80$Abudance)
+
+Nodepropls.ClassCol.allF <- merge(as.data.frame(tax_table(ps.allF.site.cla.top12.RA)), data.frame(Class = class.F, id = 1:length(class.F)), by = "Class")
+Nodepropls.ClassCol.allF <- Nodepropls.ClassCol.allF[order(Nodepropls.ClassCol.allF$id), ]
+Nodepropls.ClassCol.allF$Color <- cols.all(30)[19:30]
+Nodepropls.ClassCol.allF <- Nodepropls.ClassCol.allF[,c("Class", "Color")]
+
+Nodepropls.edgels.bi.allF.001.80$Class <- gsub("_.*","", Nodepropls.edgels.bi.allF.001.80$Class)
+
+Nodepropls.edgels.bi.allF.001.80 <- merge(Nodepropls.edgels.bi.allF.001.80, Nodepropls.ClassCol.allF, by.x = "Class", all.x = TRUE)
+Nodepropls.edgels.bi.allF.001.80$Color[is.na(Nodepropls.edgels.bi.allF.001.80$Color)] <- "#969696"
+
+par(mfrow = c(3, 3))
+plot(Nodepropls.edgels.bi.allA.001.80$Abudance, 
+	Nodepropls.edgels.bi.allA.001.80$Degree, 
+	col = Nodepropls.edgels.bi.allA.001.80$Color, pch = 19, cex =2.5,
+	xlab = NA, ylab = NA)
+plot(Nodepropls.edgels.bi.allB.001.80$Abudance, 
+	Nodepropls.edgels.bi.allB.001.80$Degree, 
+	col = Nodepropls.edgels.bi.allB.001.80$Color, pch = 19, cex =2.5,
+	xlab = NA, ylab = NA)
+plot(Nodepropls.edgels.bi.allF.001.80$Abudance, 
+	Nodepropls.edgels.bi.allF.001.80$Degree, 
+	col = Nodepropls.edgels.bi.allF.001.80$Color, pch = 19, cex =2.5,
+	xlab = NA, ylab = NA)
+
+plot(Nodepropls.edgels.bi.allA.001.80$Abudance, 
+	Nodepropls.edgels.bi.allA.001.80$Betweenness, 
+	col = Nodepropls.edgels.bi.allA.001.80$Color, pch = 19, cex =2.5,
+	xlab = NA, ylab = NA)
+plot(Nodepropls.edgels.bi.allB.001.80$Abudance, 
+	Nodepropls.edgels.bi.allB.001.80$Betweenness, 
+	col = Nodepropls.edgels.bi.allB.001.80$Color, pch = 19, cex =2.5,
+	xlab = NA, ylab = NA)
+plot(Nodepropls.edgels.bi.allF.001.80$Abudance, 
+	Nodepropls.edgels.bi.allF.001.80$Betweenness, 
+	col = Nodepropls.edgels.bi.allF.001.80$Color, pch = 19, cex =2.5,
+	xlab = NA, ylab = NA)
+
+plot(Nodepropls.edgels.bi.allA.001.80$Abudance, 
+	Nodepropls.edgels.bi.allA.001.80$Hcentrality, 
+	col = Nodepropls.edgels.bi.allA.001.80$Color, pch = 19, cex =2.5,
+	xlab = NA, ylab = NA)
+plot(Nodepropls.edgels.bi.allB.001.80$Abudance, 
+	Nodepropls.edgels.bi.allB.001.80$Hcentrality, 
+	col = Nodepropls.edgels.bi.allB.001.80$Color, pch = 19, cex =2.5,
+	xlab = NA, ylab = NA)
+plot(Nodepropls.edgels.bi.allF.001.80$Abudance, 
+	Nodepropls.edgels.bi.allF.001.80$Hcentrality, 
+	col = Nodepropls.edgels.bi.allF.001.80$Color, pch = 19, cex =2.5,
+	xlab = NA, ylab = NA)
+par(mfrow = c(1, 1))
+
+
+
+##########################################################################################
+############################## MRM #######################################################
+##########################################################################################
+
+ps2BCsim <- function(inputps)
+	{
+	tempdf <- ps2df(inputps)
+	tempdfdist <- vegdist(tempdf, method = "bray")
+	tempBCsim <- 1 - tempdfdist
+	tempBCsim
+	}
+
+BCsim.allA <- ps2BCsim(ps.allA)
+BCsim.allB <- ps2BCsim(ps.allB)
+BCsim.allF <- ps2BCsim(ps.allF)
+
+# 0 values in BCsim.allB resulted inf with ln transformation, thus mannually change 0s to 0.00000001
+mod.BCsim.allB <- as.matrix(BCsim.allB)
+mod.BCsim.allB[mod.BCsim.allB==0] <- 0.00000001
+BCsim.allB <- as.dist(mod.BCsim.allB)
+
+BCsim.ln.allA <- log(BCsim.allA, exp(1))
+BCsim.ln.allB <- log(BCsim.allB, exp(1))
+BCsim.ln.allF <- log(BCsim.allF, exp(1))
+
+library(geosphere)
+ps2sitedis <- function(inputps)
+{
+	library(geosphere)
+	tempenv <- as.data.frame(as(sample_data(inputps),"matrix"))
+	tempsitedis <- distm(apply(tempenv[,c("Longitude", "Latitude")], 2, as.numeric)) / 1000
+	rownames(tempsitedis) <- rownames(tempenv)
+	colnames(tempsitedis) <- rownames(tempenv)
+	tempsitedis <- as.dist(tempsitedis)
+	tempsitedis
+}
+
+ps2sitedis.ln <- function(inputps)
+{
+	library(geosphere)
+	tempenv <- as.data.frame(as(sample_data(inputps),"matrix"))
+	tempsitedis <- distm(apply(tempenv[,c("Longitude", "Latitude")], 2, as.numeric)) / 1000
+	tempsitedis <- log(tempsitedis+1, exp(1))
+	rownames(tempsitedis) <- rownames(tempenv)
+	colnames(tempsitedis) <- rownames(tempenv)
+	tempsitedis <- as.dist(tempsitedis)
+	tempsitedis
+}
+
+sitedis.allA <- ps2sitedis(ps.allA)
+sitedis.allB <- ps2sitedis(ps.allB)
+sitedis.allF <- ps2sitedis(ps.allF)
+
+sitedis.ln.allA <- ps2sitedis.ln(ps.allA)
+sitedis.ln.allB <- ps2sitedis.ln(ps.allB)
+sitedis.ln.allF <- ps2sitedis.ln(ps.allF)
+ 
+envfactls <- colnames(env.unique)
+envfactls <- envfactls[!(envfactls %in% c("SampID", "Annual.Mean.Temperature", "Temperature.Seasonality", "June", "July", "AnnualAverage"))]
+
+ps2envdisls <- function(inputps, inputenvfactls)
+{
+	tempenv <- as.data.frame(as(sample_data(inputps),"matrix"))
+	tempenvdisls <- list(NULL)
+	for (i in 1:length(inputenvfactls))
+	{
+		tempenvdis <- vegdist(as.numeric(tempenv[,inputenvfactls[i]]), method = "euclidean")
+		tempenvdisls[[i]] <- tempenvdis
+	}
+	names(tempenvdisls) <- inputenvfactls
+	tempenvdisls
+}
+
+envdisls.allA <- ps2envdisls(ps.allA, envfactls)
+envdisls.allB <- ps2envdisls(ps.allB, envfactls)
+envdisls.allF <- ps2envdisls(ps.allF, envfactls)
+
+# MuMIn stdize(), refer to：https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4961435/
+library(MuMIn)
+envdisls.stdize.allA <- lapply(envdisls.allA, stdize)
+envdisls.stdize.allB <- lapply(envdisls.allB, stdize)
+envdisls.stdize.allF <- lapply(envdisls.allF, stdize)
+
+# MRM
+library(ecodist)
+
+MRMfit.allA <- MRM(BCsim.ln.allA~
+sitedis.ln.allA + 
+envdisls.stdize.allA[["Altitude"]] + 
+envdisls.stdize.allA[["Moisture"]] + 
+envdisls.stdize.allA[["TOM"]] + 
+envdisls.stdize.allA[["TN"]] + 
+envdisls.stdize.allA[["AN"]] + 
+envdisls.stdize.allA[["AP"]] + 
+envdisls.stdize.allA[["AK"]] + 
+envdisls.stdize.allA[["SSalt"]] + 
+envdisls.stdize.allA[["pH"]] + 
+envdisls.stdize.allA[["Annual.Precipitation"]] + 
+envdisls.stdize.allA[["Precipitation.Seasonality"]], nperm = 10000, method = "linear")
+
+MRMfit.allB <- MRM(BCsim.ln.allB~
+sitedis.ln.allB + 
+envdisls.stdize.allB[["Altitude"]] + 
+envdisls.stdize.allB[["Moisture"]] + 
+envdisls.stdize.allB[["TOM"]] + 
+envdisls.stdize.allB[["TN"]] + 
+envdisls.stdize.allB[["AN"]] + 
+envdisls.stdize.allB[["AP"]] + 
+envdisls.stdize.allB[["AK"]] + 
+envdisls.stdize.allB[["SSalt"]] + 
+envdisls.stdize.allB[["pH"]] + 
+envdisls.stdize.allB[["Annual.Precipitation"]] + 
+envdisls.stdize.allB[["Precipitation.Seasonality"]], nperm = 10000, method = "linear")
+
+MRMfit.allF <- MRM(BCsim.ln.allF~
+sitedis.ln.allF + 
+envdisls.stdize.allF[["Altitude"]] + 
+envdisls.stdize.allF[["Moisture"]] + 
+envdisls.stdize.allF[["TOM"]] + 
+envdisls.stdize.allF[["TN"]] + 
+envdisls.stdize.allF[["AN"]] + 
+envdisls.stdize.allF[["AP"]] + 
+envdisls.stdize.allF[["AK"]] + 
+envdisls.stdize.allF[["SSalt"]] + 
+envdisls.stdize.allF[["pH"]] + 
+envdisls.stdize.allF[["Annual.Precipitation"]] + 
+envdisls.stdize.allF[["Precipitation.Seasonality"]], nperm = 10000, method = "linear")
+
+MRMfit.allA
+MRMfit.allB
+MRMfit.allF
+
+
+##########################################################################################
+############################## environmental intervals ###################################
+##########################################################################################
+
+# see branch "environmental intervals" for functions
+
+test.interval(ps.allA, "SSalt", 10, 0.5); test.interval(ps.SSalt.ln.allA, "SSalt", 10, 0.5)
+test.interval(ps.allA, "TN", 10, 0.5); test.interval(ps.TN.ln.allA, "TN", 10, 0.5)
+test.interval(ps.allA, "pH", 10, 0.5); test.interval(ps.pH.ln.allA, "pH", 10, 0.5)
+test.interval(ps.allA, "Precipitation.Seasonality", 10, 0.5); test.interval(ps.PPS.ln.allA, "Precipitation.Seasonality", 10, 0.5)
+test.interval(ps.allA, "AN", 10, 0.5); test.interval(ps.AN.ln.allA, "AN", 10, 0.5)
+
+test.interval(ps.allB, "Precipitation.Seasonality", 10, 0.5); test.interval(ps.PPS.ln.allB, "Precipitation.Seasonality", 10, 0.5)
+test.interval(ps.allB, "Moisture", 10, 0.5); test.interval(ps.Moisture.ln.allB, "Moisture", 10, 0.5)
+
+test.interval(ps.allF, "TN", 10, 0.5); test.interval(ps.TN.ln.allF, "TN", 10, 0.5)
+test.interval(ps.allF, "Moisture", 10, 0.5); test.interval(ps.Moisture.ln.allF, "Moisture", 10, 0.5)
+test.interval(ps.allF, "TOM", 10, 0.5); test.interval(ps.TOM.ln.allF, "TOM", 10, 0.5)
+test.interval(ps.allF, "SSalt", 10, 0.5); test.interval(ps.SSalt.ln.allF, "SSalt", 10, 0.5)
+test.interval(ps.allF, "AN", 10, 0.5); test.interval(ps.AN.ln.allF, "AN", 10, 0.5)
+
+ps.SSalt.ln.allA <- phyloseq(otu_table(ps.allA), sample_data(cbind(sample_data(ps.allA)[,"Location"], log(sample_data(ps.allA)[,"SSalt"], exp(1)))), tax_table(ps.allA))
+ps.TN.ln.allA <- phyloseq(otu_table(ps.allA), sample_data(cbind(sample_data(ps.allA)[,"Location"], log(sample_data(ps.allA)[,"TN"], exp(1)))), tax_table(ps.allA))
+ps.pH.ln.allA <- phyloseq(otu_table(ps.allA), sample_data(cbind(sample_data(ps.allA)[,"Location"], log(sample_data(ps.allA)[,"pH"], exp(1)))), tax_table(ps.allA))
+ps.PPS.ln.allA <- phyloseq(otu_table(ps.allA), sample_data(cbind(sample_data(ps.allA)[,"Location"], log(sample_data(ps.allA)[,"Precipitation.Seasonality"], exp(1)))), tax_table(ps.allA))
+ps.AN.ln.allA <- phyloseq(otu_table(ps.allA), sample_data(cbind(sample_data(ps.allA)[,"Location"], log(sample_data(ps.allA)[,"AN"], exp(1)))), tax_table(ps.allA))
+
+ps.PPS.ln.allB <- phyloseq(otu_table(ps.allB), sample_data(cbind(sample_data(ps.allB)[,"Location"], log(sample_data(ps.allB)[,"Precipitation.Seasonality"], exp(1)))), tax_table(ps.allB))
+ps.Moisture.ln.allB <- phyloseq(otu_table(ps.allB), sample_data(cbind(sample_data(ps.allB)[,"Location"], log(sample_data(ps.allB)[,"Moisture"], exp(1)))), tax_table(ps.allB))
+
+ps.TN.ln.allF <- phyloseq(otu_table(ps.allF), sample_data(cbind(sample_data(ps.allF)[,"Location"], log(sample_data(ps.allF)[,"TN"], exp(1)))), tax_table(ps.allF))
+ps.Moisture.ln.allF <- phyloseq(otu_table(ps.allF), sample_data(cbind(sample_data(ps.allF)[,"Location"], log(sample_data(ps.allF)[,"Moisture"], exp(1)))), tax_table(ps.allF))
+ps.TOM.ln.allF <- phyloseq(otu_table(ps.allF), sample_data(cbind(sample_data(ps.allF)[,"Location"], log(sample_data(ps.allF)[,"TOM"], exp(1)))), tax_table(ps.allF))
+ps.SSalt.ln.allF <- phyloseq(otu_table(ps.allF), sample_data(cbind(sample_data(ps.allF)[,"Location"], log(sample_data(ps.allF)[,"SSalt"], exp(1)))), tax_table(ps.allF))
+ps.AN.ln.allF <- phyloseq(otu_table(ps.allF), sample_data(cbind(sample_data(ps.allF)[,"Location"], log(sample_data(ps.allF)[,"AN"], exp(1)))), tax_table(ps.allF))
+
+intvls.SSalt.ln.allA <- ps2ls.interval(ps.SSalt.ln.allA, "SSalt", 10, 0.5)
+intvls.TN.ln.allA <- ps2ls.interval(ps.TN.ln.allA, "TN", 10, 0.5)
+intvls.pH.ln.allA <- ps2ls.interval(ps.pH.ln.allA, "pH", 10, 0.5)
+intvls.PPS.ln.allA <- ps2ls.interval(ps.PPS.ln.allA, "Precipitation.Seasonality", 10, 0.5)
+intvls.AN.ln.allA <- ps2ls.interval(ps.AN.ln.allA, "AN", 10, 0.5)
+
+intvls.PPS.ln.allB <- ps2ls.interval(ps.PPS.ln.allB, "Precipitation.Seasonality", 10, 0.5)
+intvls.Moisture.ln.allB <- ps2ls.interval(ps.Moisture.ln.allB, "Moisture", 10, 0.5)
+
+intvls.TN.ln.allF <- ps2ls.interval(ps.TN.ln.allF, "TN", 10, 0.5)
+intvls.Moisture.ln.allF <- ps2ls.interval(ps.Moisture.ln.allF, "Moisture", 10, 0.5)
+intvls.TOM.ln.allF <- ps2ls.interval(ps.TOM.ln.allF, "TOM", 10, 0.5)
+intvls.SSalt.ln.allF <- ps2ls.interval(ps.SSalt.ln.allF, "SSalt", 10, 0.5)
+intvls.AN.ln.allF <- ps2ls.interval(ps.AN.ln.allF, "AN", 10, 0.5)
+
+
+##########################################################################################
+################################### TITAN analysis #######################################
+##########################################################################################
+
+## archaeal dataset
+
+library(TITAN2)
+
+# remove taxa of frequency < 3
+ps.min3.SSalt.ln.allA <- prune_taxa(colSums(otu_table(ps.SSalt.ln.allA) != 0) > 2, ps.SSalt.ln.allA) # colSums计算的是otu_table(ps.SSalt.ln.allA) != 0中True的数量，大于2时，满足minFre为3的要求
+ps.min3.TN.ln.allA <- prune_taxa(colSums(otu_table(ps.TN.ln.allA) != 0) > 2, ps.TN.ln.allA)
+ps.min3.pH.ln.allA <- prune_taxa(colSums(otu_table(ps.pH.ln.allA) != 0) > 2, ps.pH.ln.allA)
+ps.min3.PPS.ln.allA <- prune_taxa(colSums(otu_table(ps.PPS.ln.allA) != 0) > 2, ps.PPS.ln.allA)
+ps.min3.AN.ln.allA <- prune_taxa(colSums(otu_table(ps.AN.ln.allA) != 0) > 2, ps.AN.ln.allA)
+
+df.min3.SSalt.ln.allA <- as.data.frame(as(otu_table(ps.min3.SSalt.ln.allA),"matrix")); colnames(df.min3.SSalt.ln.allA) <- tax_table(ps.min3.SSalt.ln.allA)[,7]
+colnames(df.min3.SSalt.ln.allA) <- gsub("_", " ", colnames(df.min3.SSalt.ln.allA))
+df.min3.TN.ln.allA <- as.data.frame(as(otu_table(ps.min3.TN.ln.allA),"matrix")); colnames(df.min3.TN.ln.allA) <- tax_table(ps.min3.TN.ln.allA)[,7]
+colnames(df.min3.TN.ln.allA) <- gsub("_", " ", colnames(df.min3.TN.ln.allA))
+df.min3.pH.ln.allA <- as.data.frame(as(otu_table(ps.min3.pH.ln.allA),"matrix")); colnames(df.min3.pH.ln.allA) <- tax_table(ps.min3.pH.ln.allA)[,7]
+colnames(df.min3.pH.ln.allA) <- gsub("_", " ", colnames(df.min3.pH.ln.allA))
+df.min3.PPS.ln.allA <- as.data.frame(as(otu_table(ps.min3.PPS.ln.allA),"matrix")); colnames(df.min3.PPS.ln.allA) <- tax_table(ps.min3.PPS.ln.allA)[,7]
+colnames(df.min3.PPS.ln.allA) <- gsub("_", " ", colnames(df.min3.PPS.ln.allA))
+df.min3.AN.ln.allA <- as.data.frame(as(otu_table(ps.min3.AN.ln.allA),"matrix")); colnames(df.min3.AN.ln.allA) <- tax_table(ps.min3.AN.ln.allA)[,7]
+colnames(df.min3.AN.ln.allA) <- gsub("_", " ", colnames(df.min3.AN.ln.allA))
+
+titan.SSalt.ln.allA <- titan(sample_data(ps.min3.SSalt.ln.allA), df.min3.SSalt.ln.allA)
+titan.TN.ln.allA <- titan(sample_data(ps.min3.TN.ln.allA), df.min3.TN.ln.allA)
+titan.pH.ln.allA <- titan(sample_data(ps.min3.pH.ln.allA), df.min3.pH.ln.allA)
+titan.PPS.ln.allA <- titan(sample_data(ps.min3.PPS.ln.allA), df.min3.PPS.ln.allA)
+titan.AN.ln.allA <- titan(sample_data(ps.min3.AN.ln.allA), df.min3.AN.ln.allA)
+
+plot_taxa_ridges(titan.SSalt.ln.allA, xlab = "Soluble salt")
+plot_taxa_ridges(titan.TN.ln.allA, xlab = "Total nitrogen")
+plot_taxa_ridges(titan.pH.ln.allA, xlab = "pH")
+plot_taxa_ridges(titan.PPS.ln.allA, xlab = "Precipitation seasonality")
+plot_taxa_ridges(titan.AN.ln.allA, xlab = "Available nitrogen")
+
+library(purrr)
+sppmax.SSalt.ln.allA <- titan.SSalt.ln.allA %>% pluck("sppmax") %>% tibble::as_tibble() %>% mutate(id = row.names(titan.SSalt.ln.allA$sppmax))
+sppmax.SSalt.ln.allA$filter <- 0
+pure_and_reliable_ndcs.SSalt.ln.allA <- with(sppmax.SSalt.ln.allA$filter <- 0, which(sppmax.SSalt.ln.allA$purity >= titan.SSalt.ln.allA$arguments[[7]] & sppmax.SSalt.ln.allA$reliability >= titan.SSalt.ln.allA$arguments[[8]]))
+View(sppmax.SSalt.ln.allA[pure_and_reliable_ndcs.SSalt.ln.allA,])
+
+TITAN.extract <- function(inputTITAN.out)
+{
+	library(purrr)
+	temp.sppmax <- as.data.frame(pluck(inputTITAN.out, "sppmax"))
+	temp.sppmax$id <- rownames(temp.sppmax)
+	temp.sppmax$filter <- 0
+	temp.extract <- temp.sppmax[temp.sppmax$purity >= inputTITAN.out$arguments[[7]] & temp.sppmax$reliability >= inputTITAN.out$arguments[[8]],]
+	temp.extract
+}
+
+TITANextr.SSalt.ln.allA <- TITAN.extract(titan.SSalt.ln.allA)
+TITANextr.TN.ln.allA <- TITAN.extract(titan.TN.ln.allA)
+TITANextr.pH.ln.allA <- TITAN.extract(titan.pH.ln.allA)
+TITANextr.PPS.ln.allA <- TITAN.extract(titan.PPS.ln.allA)
+TITANextr.AN.ln.allA <- TITAN.extract(titan.AN.ln.allA)
+
+
+## bacterial dataset
+
+ps.min3.PPS.ln.allB <- prune_taxa(colSums(otu_table(ps.PPS.ln.allB) != 0) > 2, ps.PPS.ln.allB) # colSums计算的是otu_table(ps.SSalt.ln.allA) != 0中True的数量，大于2时，满足minFre为3的要求
+ps.min3.Moisture.ln.allB <- prune_taxa(colSums(otu_table(ps.Moisture.ln.allB) != 0) > 2, ps.Moisture.ln.allB)
+
+df.min3.PPS.ln.allB <- as.data.frame(as(otu_table(ps.min3.PPS.ln.allB),"matrix")); colnames(df.min3.PPS.ln.allB) <- tax_table(ps.min3.PPS.ln.allB)[,7]
+colnames(df.min3.PPS.ln.allB) <- gsub("_", " ", colnames(df.min3.PPS.ln.allB))
+df.min3.Moisture.ln.allB <- as.data.frame(as(otu_table(ps.min3.Moisture.ln.allB),"matrix")); colnames(df.min3.Moisture.ln.allB) <- tax_table(ps.min3.Moisture.ln.allB)[,7]
+colnames(df.min3.Moisture.ln.allB) <- gsub("_", " ", colnames(df.min3.Moisture.ln.allB))
+
+titan.PPS.ln.allB <- titan(sample_data(ps.min3.PPS.ln.allB), df.min3.PPS.ln.allB)
+titan.Moisture.ln.allB <- titan(sample_data(ps.min3.Moisture.ln.allB), df.min3.Moisture.ln.allB)
+
+plot_taxa_ridges(titan.PPS.ln.allB, xlab = "Precipitation seasonality", n_ytaxa = 617)
+plot_taxa_ridges(titan.Moisture.ln.allB, xlab = "Moisture", n_ytaxa = 231)
+
+plot_sumz(titan.PPS.ln.allB, filter = TRUE)
+plot_sumz(titan.Moisture.ln.allB, filter = TRUE)
+
+TITANextr.PPS.ln.allB <- TITAN.extract(titan.PPS.ln.allB)
+TITANextr.Moisture.ln.allB <- TITAN.extract(titan.Moisture.ln.allB)
+
+
+## fungal dataset
+
+ps.min3.TN.ln.allF <- prune_taxa(colSums(otu_table(ps.TN.ln.allF) != 0) > 2, ps.TN.ln.allF)
+ps.min3.Moisture.ln.allF <- prune_taxa(colSums(otu_table(ps.Moisture.ln.allF) != 0) > 2, ps.Moisture.ln.allF)
+ps.min3.TOM.ln.allF <- prune_taxa(colSums(otu_table(ps.TOM.ln.allF) != 0) > 2, ps.TOM.ln.allF)
+ps.min3.SSalt.ln.allF <- prune_taxa(colSums(otu_table(ps.SSalt.ln.allF) != 0) > 2, ps.SSalt.ln.allF) # colSums计算的是otu_table(ps.SSalt.ln.allF) != 0中True的数量，大于2时，满足minFre为3的要求
+ps.min3.AN.ln.allF <- prune_taxa(colSums(otu_table(ps.AN.ln.allF) != 0) > 2, ps.AN.ln.allF)
+
+df.min3.TN.ln.allF <- as.data.frame(as(otu_table(ps.min3.TN.ln.allF),"matrix")); colnames(df.min3.TN.ln.allF) <- tax_table(ps.min3.TN.ln.allF)[,7]
+colnames(df.min3.TN.ln.allF) <- gsub("_", " ", colnames(df.min3.TN.ln.allF))
+df.min3.Moisture.ln.allF <- as.data.frame(as(otu_table(ps.min3.Moisture.ln.allF),"matrix")); colnames(df.min3.Moisture.ln.allF) <- tax_table(ps.min3.Moisture.ln.allF)[,7]
+colnames(df.min3.Moisture.ln.allF) <- gsub("_", " ", colnames(df.min3.Moisture.ln.allF))
+df.min3.TOM.ln.allF <- as.data.frame(as(otu_table(ps.min3.TOM.ln.allF),"matrix")); colnames(df.min3.TOM.ln.allF) <- tax_table(ps.min3.TOM.ln.allF)[,7]
+colnames(df.min3.TOM.ln.allF) <- gsub("_", " ", colnames(df.min3.TOM.ln.allF))
+df.min3.SSalt.ln.allF <- as.data.frame(as(otu_table(ps.min3.SSalt.ln.allF),"matrix")); colnames(df.min3.SSalt.ln.allF) <- tax_table(ps.min3.SSalt.ln.allF)[,7]
+colnames(df.min3.SSalt.ln.allF) <- gsub("_", " ", colnames(df.min3.SSalt.ln.allF))
+df.min3.AN.ln.allF <- as.data.frame(as(otu_table(ps.min3.AN.ln.allF),"matrix")); colnames(df.min3.AN.ln.allF) <- tax_table(ps.min3.AN.ln.allF)[,7]
+colnames(df.min3.AN.ln.allF) <- gsub("_", " ", colnames(df.min3.AN.ln.allF))
+
+titan.TN.ln.allF <- titan(sample_data(ps.min3.TN.ln.allF), df.min3.TN.ln.allF)
+titan.Moisture.ln.allF <- titan(sample_data(ps.min3.Moisture.ln.allF), df.min3.Moisture.ln.allF)
+titan.TOM.ln.allF <- titan(sample_data(ps.min3.TOM.ln.allF), df.min3.TOM.ln.allF)
+titan.SSalt.ln.allF <- titan(sample_data(ps.min3.SSalt.ln.allF), df.min3.SSalt.ln.allF)
+titan.AN.ln.allF <- titan(sample_data(ps.min3.AN.ln.allF), df.min3.AN.ln.allF)
+
+plot_taxa_ridges(titan.TN.ln.allF, xlab = "Total nitrogen", n_ytaxa = 164)
+plot_taxa_ridges(titan.Moisture.ln.allF, xlab = "Moisture", n_ytaxa = 176)
+plot_taxa_ridges(titan.TOM.ln.allF, xlab = "Total organic matter", n_ytaxa = 112)
+plot_taxa_ridges(titan.SSalt.ln.allF, xlab = "Soluble salt", n_ytaxa = 198)
+plot_taxa_ridges(titan.AN.ln.allF, xlab = "Available nitrogen", n_ytaxa = 99)
+
+plot_sumz(titan.TN.ln.allF, filter = TRUE)
+plot_sumz(titan.Moisture.ln.allF, filter = TRUE)
+plot_sumz(titan.TOM.ln.allF, filter = TRUE)
+plot_sumz(titan.SSalt.ln.allF, filter = TRUE)
+plot_sumz(titan.AN.ln.allF, filter = TRUE)
+
+TITANextr.TN.ln.allF <- TITAN.extract(titan.TN.ln.allF)
+TITANextr.Moisture.ln.allF <- TITAN.extract(titan.Moisture.ln.allF)
+TITANextr.TOM.ln.allF <- TITAN.extract(titan.TOM.ln.allF)
+TITANextr.SSalt.ln.allF <- TITAN.extract(titan.SSalt.ln.allF)
+TITANextr.AN.ln.allF <- TITAN.extract(titan.AN.ln.allF)
+
+
+###### TITAN vs OMP net
+
+
+TITANvsOMPnet <- read.csv("TITANvsOMPnet.csv", header=T)
+
+barplot(cbind(EI, CI, EN, CD, ED) ~ X, data = TITANvsOMPnet)
+barplot(cbind(ED, CD, EN, CI, EI) ~ X, data = TITANvsOMPnet[1:5,])
+barplot(cbind(ED, CD, EN, CI, EI) ~ X, data = TITANvsOMPnet[6:7,])
+barplot(cbind(ED, CD, EN, CI, EI) ~ X, data = TITANvsOMPnet[8:12,])
+
+
+##########################################################################################
+################################### OMP-based-co-occurrence ##############################
+##########################################################################################
+
+# see branch "OMP-based-co-occurrence" and "co-occurrence from multiple networks and drho" for functions
+
+library(ShortRead)
+library(Biostrings)
+library(phyloseq)
+library(vegan)
+library(ecodist)
+library(igraph)
+library(ggplot2)
+library(bipartite)
+library(reshape2)
+library(ggpubr)
+library(grid)
+library(gridExtra)
+library(doParallel)
+library(parallel)
+library(foreach)
+registerDoParallel(2) # or any core number you can use
+
+## archaeal dataset
+
+edgels.intvls.SSalt.ln.allA <- list(NULL)
+    for (i in 1:length(intvls.SSalt.ln.allA))
+	{
+		if (!is.atomic(intvls.SSalt.ln.allA[[i]]))
+		{edgels.intvls.SSalt.ln.allA[[i]] <- ps2edgels.bi(intvls.SSalt.ln.allA[[i]])}
+		else
+		{edgels.intvls.SSalt.ln.allA[[i]] <- 0}
+	print(paste("##########",i, "out of", length(intvls.SSalt.ln.allA),"##########", sep = " "))}
+edgels.intvls.TN.ln.allA <- list(NULL)
+    for (i in 1:length(intvls.TN.ln.allA))
+	{
+		if (!is.atomic(intvls.TN.ln.allA[[i]]))
+		{edgels.intvls.TN.ln.allA[[i]] <- ps2edgels.bi(intvls.TN.ln.allA[[i]])}
+		else
+		{edgels.intvls.TN.ln.allA[[i]] <- 0}
+	print(paste("##########",i, "out of", length(intvls.TN.ln.allA),"##########", sep = " "))}
+edgels.intvls.pH.ln.allA <- list(NULL)
+    for (i in 1:length(intvls.pH.ln.allA))
+	{
+		if (!is.atomic(intvls.pH.ln.allA[[i]]))
+		{edgels.intvls.pH.ln.allA[[i]] <- ps2edgels.bi(intvls.pH.ln.allA[[i]])}
+		else
+		{edgels.intvls.pH.ln.allA[[i]] <- 0}
+	print(paste("##########",i, "out of", length(intvls.pH.ln.allA),"##########", sep = " "))}
+edgels.intvls.PPS.ln.allA <- list(NULL)
+    for (i in 1:length(intvls.PPS.ln.allA))
+	{
+		if (!is.atomic(intvls.PPS.ln.allA[[i]]))
+		{edgels.intvls.PPS.ln.allA[[i]] <- ps2edgels.bi(intvls.PPS.ln.allA[[i]])}
+		else
+		{edgels.intvls.PPS.ln.allA[[i]] <- 0}
+	print(paste("##########",i, "out of", length(intvls.PPS.ln.allA),"##########", sep = " "))}
+edgels.intvls.AN.ln.allA <- list(NULL)
+    for (i in 1:length(intvls.AN.ln.allA))
+	{
+		if (!is.atomic(intvls.AN.ln.allA[[i]]))
+		{edgels.intvls.AN.ln.allA[[i]] <- ps2edgels.bi(intvls.AN.ln.allA[[i]])}
+		else
+		{edgels.intvls.AN.ln.allA[[i]] <- 0}
+	print(paste("##########",i, "out of", length(intvls.AN.ln.allA),"##########", sep = " "))}
+
+# p<0.05
+edgels.intvls.SSalt.ln.allA.p05 <- list(NULL)
+for (i in 1:length(edgels.intvls.SSalt.ln.allA))
+	{
+		if (!is.numeric(edgels.intvls.SSalt.ln.allA[[i]]))
+		{edgels.intvls.SSalt.ln.allA.p05[[i]] <- as.data.frame(edgels.intvls.SSalt.ln.allA[[i]])[edgels.intvls.SSalt.ln.allA[[i]][,"p.value"]<0.05,]}
+		else
+		{edgels.intvls.SSalt.ln.allA.p05[[i]] <- matrix(data = NA, ncol = 6, nrow = 0)
+		colnames(edgels.intvls.SSalt.ln.allA.p05[[i]])<-c("ASV1","ASV2","rho","p.value","ab1","ab2")}
+	}
+edgels.intvls.TN.ln.allA.p05 <- list(NULL)
+for (i in 1:length(edgels.intvls.TN.ln.allA))
+	{
+		if (!is.numeric(edgels.intvls.TN.ln.allA[[i]]))
+		{edgels.intvls.TN.ln.allA.p05[[i]] <- as.data.frame(edgels.intvls.TN.ln.allA[[i]])[edgels.intvls.TN.ln.allA[[i]][,"p.value"]<0.05,]}
+		else
+		{edgels.intvls.TN.ln.allA.p05[[i]] <- matrix(data = NA, ncol = 6, nrow = 0)
+		colnames(edgels.intvls.TN.ln.allA.p05[[i]])<-c("ASV1","ASV2","rho","p.value","ab1","ab2")}
+	}
+edgels.intvls.pH.ln.allA.p05 <- list(NULL)
+for (i in 1:length(edgels.intvls.pH.ln.allA))
+	{
+		if (!is.numeric(edgels.intvls.pH.ln.allA[[i]]))
+		{edgels.intvls.pH.ln.allA.p05[[i]] <- as.data.frame(edgels.intvls.pH.ln.allA[[i]])[edgels.intvls.pH.ln.allA[[i]][,"p.value"]<0.05,]}
+		else
+		{edgels.intvls.pH.ln.allA.p05[[i]] <- matrix(data = NA, ncol = 6, nrow = 0)
+		colnames(edgels.intvls.pH.ln.allA.p05[[i]])<-c("ASV1","ASV2","rho","p.value","ab1","ab2")}
+	}
+edgels.intvls.PPS.ln.allA.p05 <- list(NULL)
+for (i in 1:length(edgels.intvls.PPS.ln.allA))
+	{
+		if (!is.numeric(edgels.intvls.PPS.ln.allA[[i]]))
+		{edgels.intvls.PPS.ln.allA.p05[[i]] <- as.data.frame(edgels.intvls.PPS.ln.allA[[i]])[edgels.intvls.PPS.ln.allA[[i]][,"p.value"]<0.05,]}
+		else
+		{edgels.intvls.PPS.ln.allA.p05[[i]] <- matrix(data = NA, ncol = 6, nrow = 0)
+		colnames(edgels.intvls.PPS.ln.allA.p05[[i]])<-c("ASV1","ASV2","rho","p.value","ab1","ab2")}
+	}
+edgels.intvls.AN.ln.allA.p05 <- list(NULL)
+for (i in 1:length(edgels.intvls.AN.ln.allA))
+	{
+		if (!is.numeric(edgels.intvls.AN.ln.allA[[i]]))
+		{edgels.intvls.AN.ln.allA.p05[[i]] <- as.data.frame(edgels.intvls.AN.ln.allA[[i]])[edgels.intvls.AN.ln.allA[[i]][,"p.value"]<0.05,]}
+		else
+		{edgels.intvls.AN.ln.allA.p05[[i]] <- matrix(data = NA, ncol = 6, nrow = 0)
+		colnames(edgels.intvls.AN.ln.allA.p05[[i]])<-c("ASV1","ASV2","rho","p.value","ab1","ab2")}
+	}
+
+
+mergerho.intvls.SSalt.ln.allA.p05 <- merge.rho(edgels.intvls.SSalt.ln.allA.p05)
+mergerho.intvls.TN.ln.allA.p05 <- merge.rho(edgels.intvls.TN.ln.allA.p05)
+mergerho.intvls.pH.ln.allA.p05 <- merge.rho(edgels.intvls.pH.ln.allA.p05)
+mergerho.intvls.PPS.ln.allA.p05 <- merge.rho(edgels.intvls.PPS.ln.allA.p05)
+mergerho.intvls.AN.ln.allA.p05 <- merge.rho(edgels.intvls.AN.ln.allA.p05)
+
+# count times of rho occurred, and remove edges only formed once among all networks (rho.count = 1)
+mergerho.intvls.SSalt.ln.allA.p05$rho.count <- rowSums(!is.na(mergerho.intvls.SSalt.ln.allA.p05[,3:12]))
+mergerho.intvls.TN.ln.allA.p05$rho.count <- rowSums(!is.na(mergerho.intvls.TN.ln.allA.p05[,3:12]))
+mergerho.intvls.pH.ln.allA.p05$rho.count <- rowSums(!is.na(mergerho.intvls.pH.ln.allA.p05[,3:12]))
+mergerho.intvls.PPS.ln.allA.p05$rho.count <- rowSums(!is.na(mergerho.intvls.PPS.ln.allA.p05[,3:12]))
+mergerho.intvls.AN.ln.allA.p05$rho.count <- rowSums(!is.na(mergerho.intvls.AN.ln.allA.p05[,3:12]))
+
+mergerho.intvls.SSalt.ln.allA.p05.fltr <- mergerho.intvls.SSalt.ln.allA.p05[mergerho.intvls.SSalt.ln.allA.p05[,"rho.count"]>1,]
+mergerho.intvls.TN.ln.allA.p05.fltr <- mergerho.intvls.TN.ln.allA.p05[mergerho.intvls.TN.ln.allA.p05[,"rho.count"]>1,]
+mergerho.intvls.pH.ln.allA.p05.fltr <- mergerho.intvls.pH.ln.allA.p05[mergerho.intvls.pH.ln.allA.p05[,"rho.count"]>1,]
+mergerho.intvls.PPS.ln.allA.p05.fltr <- mergerho.intvls.PPS.ln.allA.p05[mergerho.intvls.PPS.ln.allA.p05[,"rho.count"]>1,]
+mergerho.intvls.AN.ln.allA.p05.fltr <- mergerho.intvls.AN.ln.allA.p05[mergerho.intvls.AN.ln.allA.p05[,"rho.count"]>1,]
+
+# calculate the changes of rho between common edges.
+drho.intvls.SSalt.ln.allA.p05 <- drho(mergerho.intvls.SSalt.ln.allA.p05.fltr)
+drho.intvls.TN.ln.allA.p05 <- drho(mergerho.intvls.TN.ln.allA.p05.fltr)
+drho.intvls.pH.ln.allA.p05 <- drho(mergerho.intvls.pH.ln.allA.p05.fltr)
+drho.intvls.PPS.ln.allA.p05 <- drho(mergerho.intvls.PPS.ln.allA.p05.fltr)
+drho.intvls.AN.ln.allA.p05 <- drho(mergerho.intvls.AN.ln.allA.p05.fltr)
+
+# target core interactions present in 5 or more networks 
+mergerho.intvls.SSalt.ln.allA.p05.core <- mergerho.intvls.SSalt.ln.allA.p05[mergerho.intvls.SSalt.ln.allA.p05[,"rho.count"]>4,]
+mergerho.intvls.TN.ln.allA.p05.core <- mergerho.intvls.TN.ln.allA.p05[mergerho.intvls.TN.ln.allA.p05[,"rho.count"]>4,]
+mergerho.intvls.pH.ln.allA.p05.core <- mergerho.intvls.pH.ln.allA.p05[mergerho.intvls.pH.ln.allA.p05[,"rho.count"]>4,]
+mergerho.intvls.PPS.ln.allA.p05.core <- mergerho.intvls.PPS.ln.allA.p05[mergerho.intvls.PPS.ln.allA.p05[,"rho.count"]>4,]
+mergerho.intvls.AN.ln.allA.p05.core <- mergerho.intvls.AN.ln.allA.p05[mergerho.intvls.AN.ln.allA.p05[,"rho.count"]>4,]
+
+# ploting
+# intvls.ln
+drho.intvls.NNA.SSalt.ln.allA.p05 <- melt(drho.intvls.SSalt.ln.allA.p05)
+colnames(drho.intvls.NNA.SSalt.ln.allA.p05) <- c("trivial","intvl","drho")
+drho.intvls.NNA.SSalt.ln.allA.p05 <- drho.intvls.NNA.SSalt.ln.allA.p05[!is.na(drho.intvls.NNA.SSalt.ln.allA.p05$drho),]
+drho.intvls.NNA.SSalt.ln.allA.p05$intvl <- as.character(drho.intvls.NNA.SSalt.ln.allA.p05$intvl)
+
+drho.intvls.NNA.TN.ln.allA.p05 <- melt(drho.intvls.TN.ln.allA.p05)
+colnames(drho.intvls.NNA.TN.ln.allA.p05) <- c("trivial","intvl","drho")
+drho.intvls.NNA.TN.ln.allA.p05 <- drho.intvls.NNA.TN.ln.allA.p05[!is.na(drho.intvls.NNA.TN.ln.allA.p05$drho),]
+drho.intvls.NNA.TN.ln.allA.p05$intvl <- as.character(drho.intvls.NNA.TN.ln.allA.p05$intvl)
+
+drho.intvls.NNA.pH.ln.allA.p05 <- melt(drho.intvls.pH.ln.allA.p05)
+colnames(drho.intvls.NNA.pH.ln.allA.p05) <- c("trivial","intvl","drho")
+drho.intvls.NNA.pH.ln.allA.p05 <- drho.intvls.NNA.pH.ln.allA.p05[!is.na(drho.intvls.NNA.pH.ln.allA.p05$drho),]
+drho.intvls.NNA.pH.ln.allA.p05$intvl <- as.character(drho.intvls.NNA.pH.ln.allA.p05$intvl)
+
+drho.intvls.NNA.PPS.ln.allA.p05 <- melt(drho.intvls.PPS.ln.allA.p05)
+colnames(drho.intvls.NNA.PPS.ln.allA.p05) <- c("trivial","intvl","drho")
+drho.intvls.NNA.PPS.ln.allA.p05 <- drho.intvls.NNA.PPS.ln.allA.p05[!is.na(drho.intvls.NNA.PPS.ln.allA.p05$drho),]
+drho.intvls.NNA.PPS.ln.allA.p05$intvl <- as.character(drho.intvls.NNA.PPS.ln.allA.p05$intvl)
+
+drho.intvls.NNA.AN.ln.allA.p05 <- melt(drho.intvls.AN.ln.allA.p05)
+colnames(drho.intvls.NNA.AN.ln.allA.p05) <- c("trivial","intvl","drho")
+drho.intvls.NNA.AN.ln.allA.p05 <- drho.intvls.NNA.AN.ln.allA.p05[!is.na(drho.intvls.NNA.AN.ln.allA.p05$drho),]
+drho.intvls.NNA.AN.ln.allA.p05$intvl <- as.character(drho.intvls.NNA.AN.ln.allA.p05$intvl)
+
+drho.intvls.NNA.SSalt.ln.allA.p05$intvl <- as.numeric(drho.intvls.NNA.SSalt.ln.allA.p05$intvl)
+ggplot(drho.intvls.NNA.SSalt.ln.allA.p05, aes(x=intvl, y=drho)) +
+    geom_point(color = "#002060") + geom_smooth(method="loess", formula=y~x, fill = "#A6CEE3", color = "#1F78B4") + 
+	theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black")) #去除背景
+
+drho.intvls.NNA.TN.ln.allA.p05$intvl <- as.numeric(drho.intvls.NNA.TN.ln.allA.p05$intvl)
+ggplot(drho.intvls.NNA.TN.ln.allA.p05, aes(x=intvl, y=drho)) +
+    geom_point(color = "#002060") + geom_smooth(method="loess", formula=y~x, fill = "#A6CEE3", color = "#1F78B4") + 
+	theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+drho.intvls.NNA.pH.ln.allA.p05$intvl <- as.numeric(drho.intvls.NNA.pH.ln.allA.p05$intvl)
+ggplot(drho.intvls.NNA.pH.ln.allA.p05, aes(x=intvl, y=drho)) +
+    geom_point(color = "#002060") + geom_smooth(method="loess", formula=y~x, fill = "#A6CEE3", color = "#1F78B4") + 
+	theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+drho.intvls.NNA.PPS.ln.allA.p05$intvl <- as.numeric(drho.intvls.NNA.PPS.ln.allA.p05$intvl)
+ggplot(drho.intvls.NNA.PPS.ln.allA.p05, aes(x=intvl, y=drho)) +
+    geom_point(color = "#002060") + geom_smooth(method="loess", formula=y~x, fill = "#A6CEE3", color = "#1F78B4") + 
+	theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+drho.intvls.NNA.AN.ln.allA.p05$intvl <- as.numeric(drho.intvls.NNA.AN.ln.allA.p05$intvl)
+ggplot(drho.intvls.NNA.AN.ln.allA.p05, aes(x=intvl, y=drho)) +
+    geom_point(color = "#002060") + geom_smooth(method="loess", formula=y~x, fill = "#A6CEE3", color = "#1F78B4") + 
+	theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+# t.test difference significance between drhos and 0
+ttest.drho.intvls.SSalt.ln.allA.p05 <- as.data.frame(t.test(drho.intvls.SSalt.ln.allA.p05[,2], mu = 0)[c(2,3,5,6,7)])
+for (i in 3:ncol(drho.intvls.SSalt.ln.allA.p05))
+{
+	if (sum(!is.na(drho.intvls.SSalt.ln.allA.p05[,i])) > 1) 
+	{ttest.drho.intvls.SSalt.ln.allA.p05 <- rbind(ttest.drho.intvls.SSalt.ln.allA.p05, as.data.frame(t.test(drho.intvls.SSalt.ln.allA.p05[,i], mu = 0)[c(2,3,5,6,7)]))}
+	else 
+	{ttest.drho.intvls.SSalt.ln.allA.p05 <- rbind(ttest.drho.intvls.SSalt.ln.allA.p05, NA)}
+}
+rownames(ttest.drho.intvls.SSalt.ln.allA.p05) <- 2:(nrow(ttest.drho.intvls.SSalt.ln.allA.p05)+1)
+
+ttest.drho.intvls.TN.ln.allA.p05 <- as.data.frame(t.test(drho.intvls.TN.ln.allA.p05[,2], mu = 0)[c(2,3,5,6,7)])
+for (i in 3:ncol(drho.intvls.TN.ln.allA.p05))
+{
+	if (sum(!is.na(drho.intvls.TN.ln.allA.p05[,i])) > 1) 
+	{ttest.drho.intvls.TN.ln.allA.p05 <- rbind(ttest.drho.intvls.TN.ln.allA.p05, as.data.frame(t.test(drho.intvls.TN.ln.allA.p05[,i], mu = 0)[c(2,3,5,6,7)]))}
+	else 
+	{ttest.drho.intvls.TN.ln.allA.p05 <- rbind(ttest.drho.intvls.TN.ln.allA.p05, NA)}
+}
+rownames(ttest.drho.intvls.TN.ln.allA.p05) <- 2:(nrow(ttest.drho.intvls.TN.ln.allA.p05)+1)
+
+ttest.drho.intvls.pH.ln.allA.p05 <- as.data.frame(t.test(drho.intvls.pH.ln.allA.p05[,3], mu = 0)[c(2,3,5,6,7)])
+for (i in 4:ncol(drho.intvls.pH.ln.allA.p05))
+{
+	if (sum(!is.na(drho.intvls.pH.ln.allA.p05[,i])) > 1) 
+	{ttest.drho.intvls.pH.ln.allA.p05 <- rbind(ttest.drho.intvls.pH.ln.allA.p05, as.data.frame(t.test(drho.intvls.pH.ln.allA.p05[,i], mu = 0)[c(2,3,5,6,7)]))}
+	else 
+	{ttest.drho.intvls.pH.ln.allA.p05 <- rbind(ttest.drho.intvls.pH.ln.allA.p05, NA)}
+}
+rownames(ttest.drho.intvls.pH.ln.allA.p05) <- 3:(nrow(ttest.drho.intvls.pH.ln.allA.p05)+2)
+
+ttest.drho.intvls.PPS.ln.allA.p05 <- as.data.frame(t.test(drho.intvls.PPS.ln.allA.p05[,2], mu = 0)[c(2,3,5,6,7)])
+for (i in 3:ncol(drho.intvls.PPS.ln.allA.p05))
+{
+	if (sum(!is.na(drho.intvls.PPS.ln.allA.p05[,i])) > 1) 
+	{ttest.drho.intvls.PPS.ln.allA.p05 <- rbind(ttest.drho.intvls.PPS.ln.allA.p05, as.data.frame(t.test(drho.intvls.PPS.ln.allA.p05[,i], mu = 0)[c(2,3,5,6,7)]))}
+	else 
+	{ttest.drho.intvls.PPS.ln.allA.p05 <- rbind(ttest.drho.intvls.PPS.ln.allA.p05, NA)}
+}
+rownames(ttest.drho.intvls.PPS.ln.allA.p05) <- 2:(nrow(ttest.drho.intvls.PPS.ln.allA.p05)+1)
+
+ttest.drho.intvls.AN.ln.allA.p05 <- as.data.frame(t.test(drho.intvls.AN.ln.allA.p05[,2], mu = 0)[c(2,3,5,6,7)])
+for (i in 3:ncol(drho.intvls.AN.ln.allA.p05))
+{
+	if (sum(!is.na(drho.intvls.AN.ln.allA.p05[,i])) > 1) 
+	{ttest.drho.intvls.AN.ln.allA.p05 <- rbind(ttest.drho.intvls.AN.ln.allA.p05, as.data.frame(t.test(drho.intvls.AN.ln.allA.p05[,i], mu = 0)[c(2,3,5,6,7)]))}
+	else 
+	{ttest.drho.intvls.AN.ln.allA.p05 <- rbind(ttest.drho.intvls.AN.ln.allA.p05, NA)}
+}
+rownames(ttest.drho.intvls.AN.ln.allA.p05) <- 2:(nrow(ttest.drho.intvls.AN.ln.allA.p05)+1)
+
+# calculate network properties from a list of edgelist
+netwk.properties <- function(inputedgelsls)
+{
+	temp.properties <- matrix(data = NA, nrow=0, ncol = 10)
+	for (i in 1:length(inputedgelsls))
+	{
+		if (is.data.frame(inputedgelsls[[i]]))
+		{
+			temp.graph <- graph_from_edgelist(as.matrix(inputedgelsls[[i]][,1:2]),directed = FALSE)
+			tempdf <- t(as.data.frame(c(length(V(temp.graph)),
+				nrow(inputedgelsls[[i]]),
+				edge_density(temp.graph),
+				transitivity(temp.graph, type="global"),
+				diameter(temp.graph, directed=F, weights=NA),
+				mean_distance(temp.graph, directed=F),
+				centr_degree(temp.graph)$centralization,
+				centr_clo(temp.graph, mode="all", normalized=T)$centralization,
+				centr_eigen(temp.graph, directed=F, normalized=T)$centralization,
+				centr_betw(temp.graph, directed=F, normalized=T)$centralization)))
+			temp.properties <- rbind(temp.properties, tempdf)
+		}
+		else 
+		{
+			temp.properties <- rbind(temp.properties, NA)
+		}
+	}
+	colnames(temp.properties) <- c("Nnode","Nedge","edge_density","transitivity","diameter","mean_distance","centr_degree","centr_clo","centr_eigen","centr_betw")
+	rownames(temp.properties) <- 1:nrow(temp.properties)
+	temp.properties
+}
+
+ntwprop.edgels.intvls.SSalt.ln.allA.p05 <- netwk.properties(edgels.intvls.SSalt.ln.allA.p05)
+ntwprop.edgels.intvls.TN.ln.allA.p05 <- netwk.properties(edgels.intvls.TN.ln.allA.p05)
+ntwprop.edgels.intvls.pH.ln.allA.p05 <- netwk.properties(edgels.intvls.pH.ln.allA.p05)
+ntwprop.edgels.intvls.PPS.ln.allA.p05 <- netwk.properties(edgels.intvls.PPS.ln.allA.p05)
+ntwprop.edgels.intvls.AN.ln.allA.p05 <- netwk.properties(edgels.intvls.AN.ln.allA.p05)
+
+
+## bacterial dataset
+
+edgels.intvls.PPS.ln.allB <- list(NULL)
+    for (i in 1:length(intvls.PPS.ln.allB))
+	{
+		if (!is.atomic(intvls.PPS.ln.allB[[i]]))
+		{edgels.intvls.PPS.ln.allB[[i]] <- ps2edgels.bi(intvls.PPS.ln.allB[[i]])}
+		else
+		{edgels.intvls.PPS.ln.allB[[i]] <- 0}
+	print(paste("##########",i, "out of", length(intvls.PPS.ln.allB),"##########", sep = " "))}
+edgels.intvls.Moisture.ln.allB <- list(NULL)
+    for (i in 1:length(intvls.Moisture.ln.allB))
+	{
+		if (!is.atomic(intvls.Moisture.ln.allB[[i]]))
+		{edgels.intvls.Moisture.ln.allB[[i]] <- ps2edgels.bi(intvls.Moisture.ln.allB[[i]])}
+		else
+		{edgels.intvls.Moisture.ln.allB[[i]] <- 0}
+	print(paste("##########",i, "out of", length(intvls.Moisture.ln.allB),"##########", sep = " "))}
+
+# p<0.05
+edgels.intvls.PPS.ln.allB.p05 <- list(NULL)
+for (i in 1:length(edgels.intvls.PPS.ln.allB))
+	{
+		if (!is.numeric(edgels.intvls.PPS.ln.allB[[i]]))
+		{edgels.intvls.PPS.ln.allB.p05[[i]] <- as.data.frame(edgels.intvls.PPS.ln.allB[[i]])[edgels.intvls.PPS.ln.allB[[i]][,"p.value"]<0.05,]}
+		else
+		{edgels.intvls.PPS.ln.allB.p05[[i]] <- matrix(data = NA, ncol = 6, nrow = 0)
+		colnames(edgels.intvls.PPS.ln.allB.p05[[i]])<-c("ASV1","ASV2","rho","p.value","ab1","ab2")}
+	}
+edgels.intvls.Moisture.ln.allB.p05 <- list(NULL)
+for (i in 1:length(edgels.intvls.Moisture.ln.allB))
+	{
+		if (!is.numeric(edgels.intvls.Moisture.ln.allB[[i]]))
+		{edgels.intvls.Moisture.ln.allB.p05[[i]] <- as.data.frame(edgels.intvls.Moisture.ln.allB[[i]])[edgels.intvls.Moisture.ln.allB[[i]][,"p.value"]<0.05,]}
+		else
+		{edgels.intvls.Moisture.ln.allB.p05[[i]] <- matrix(data = NA, ncol = 6, nrow = 0)
+		colnames(edgels.intvls.Moisture.ln.allB.p05[[i]])<-c("ASV1","ASV2","rho","p.value","ab1","ab2")}
+	}
+
+mergerho.intvls.PPS.ln.allB.p05 <- merge.rho(edgels.intvls.PPS.ln.allB.p05)
+mergerho.intvls.Moisture.ln.allB.p05 <- merge.rho(edgels.intvls.Moisture.ln.allB.p05)
+# count times of rho occurred, and remove edges only formed once among all networks (rho.count = 1)
+mergerho.intvls.PPS.ln.allB.p05$rho.count <- rowSums(!is.na(mergerho.intvls.PPS.ln.allB.p05[,3:12]))
+mergerho.intvls.Moisture.ln.allB.p05$rho.count <- rowSums(!is.na(mergerho.intvls.Moisture.ln.allB.p05[,3:12]))
+
+mergerho.intvls.PPS.ln.allB.p05.fltr <- mergerho.intvls.PPS.ln.allB.p05[mergerho.intvls.PPS.ln.allB.p05[,"rho.count"]>1,]
+mergerho.intvls.Moisture.ln.allB.p05.fltr <- mergerho.intvls.Moisture.ln.allB.p05[mergerho.intvls.Moisture.ln.allB.p05[,"rho.count"]>1,]
+
+# calculate the changes of rho between common edges.
+drho.intvls.PPS.ln.allB.p05 <- drho(mergerho.intvls.PPS.ln.allB.p05.fltr)
+drho.intvls.Moisture.ln.allB.p05 <- drho(mergerho.intvls.Moisture.ln.allB.p05.fltr)
+
+# target core interactions present in 5 or more networks 
+mergerho.intvls.PPS.ln.allB.p05.core <- mergerho.intvls.PPS.ln.allB.p05[mergerho.intvls.PPS.ln.allB.p05[,"rho.count"]>3,]
+mergerho.intvls.Moisture.ln.allB.p05.core <- mergerho.intvls.Moisture.ln.allB.p05[mergerho.intvls.Moisture.ln.allB.p05[,"rho.count"]>3,]
+
+# ploting
+drho.intvls.NNA.PPS.ln.allB.p05 <- melt(drho.intvls.PPS.ln.allB.p05)
+colnames(drho.intvls.NNA.PPS.ln.allB.p05) <- c("trivial","intvl","drho")
+drho.intvls.NNA.PPS.ln.allB.p05 <- drho.intvls.NNA.PPS.ln.allB.p05[!is.na(drho.intvls.NNA.PPS.ln.allB.p05$drho),]
+drho.intvls.NNA.PPS.ln.allB.p05$intvl <- as.character(drho.intvls.NNA.PPS.ln.allB.p05$intvl)
+
+drho.intvls.NNA.Moisture.ln.allB.p05 <- melt(drho.intvls.Moisture.ln.allB.p05)
+colnames(drho.intvls.NNA.Moisture.ln.allB.p05) <- c("trivial","intvl","drho")
+drho.intvls.NNA.Moisture.ln.allB.p05 <- drho.intvls.NNA.Moisture.ln.allB.p05[!is.na(drho.intvls.NNA.Moisture.ln.allB.p05$drho),]
+drho.intvls.NNA.Moisture.ln.allB.p05$intvl <- as.character(drho.intvls.NNA.Moisture.ln.allB.p05$intvl)
+
+drho.intvls.NNA.PPS.ln.allB.p05$intvl <- as.numeric(drho.intvls.NNA.PPS.ln.allB.p05$intvl)
+ggplot(drho.intvls.NNA.PPS.ln.allB.p05, aes(x=intvl, y=drho)) +
+	geom_point(color = "#c00000") + geom_smooth(method="loess", formula=y~x, fill = "#FB9A99", color = "#E31A1C") + 
+	theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+drho.intvls.NNA.Moisture.ln.allB.p05$intvl <- as.numeric(drho.intvls.NNA.Moisture.ln.allB.p05$intvl)
+ggplot(drho.intvls.NNA.Moisture.ln.allB.p05, aes(x=intvl, y=drho)) +
+	geom_point(color = "#c00000") + geom_smooth(method="loess", formula=y~x, fill = "#FB9A99", color = "#E31A1C") + 
+	theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+# t.test difference significance between drhos and 0
+ttest.drho.intvls.PPS.ln.allB.p05 <- as.data.frame(t.test(drho.intvls.PPS.ln.allB.p05[,2], mu = 0)[c(2,3,5,6,7)])
+for (i in 3:ncol(drho.intvls.PPS.ln.allB.p05))
+{
+	if (sum(!is.na(drho.intvls.PPS.ln.allB.p05[,i])) > 1)
+	{ttest.drho.intvls.PPS.ln.allB.p05 <- rbind(ttest.drho.intvls.PPS.ln.allB.p05, as.data.frame(t.test(drho.intvls.PPS.ln.allB.p05[,i], mu = 0)[c(2,3,5,6,7)]))}
+	else 
+	{ttest.drho.intvls.PPS.ln.allB.p05 <- rbind(ttest.drho.intvls.PPS.ln.allB.p05, NA)}
+}
+rownames(ttest.drho.intvls.PPS.ln.allB.p05) <- 2:(nrow(ttest.drho.intvls.PPS.ln.allB.p05)+1)
+
+ttest.drho.intvls.Moisture.ln.allB.p05 <- as.data.frame(t.test(drho.intvls.Moisture.ln.allB.p05[,2], mu = 0)[c(2,3,5,6,7)])
+for (i in 3:ncol(drho.intvls.Moisture.ln.allB.p05))
+{
+	if (sum(!is.na(drho.intvls.Moisture.ln.allB.p05[,i])) > 1) 
+	{ttest.drho.intvls.Moisture.ln.allB.p05 <- rbind(ttest.drho.intvls.Moisture.ln.allB.p05, as.data.frame(t.test(drho.intvls.Moisture.ln.allB.p05[,i], mu = 0)[c(2,3,5,6,7)]))}
+	else 
+	{ttest.drho.intvls.Moisture.ln.allB.p05 <- rbind(ttest.drho.intvls.Moisture.ln.allB.p05, NA)}
+}
+rownames(ttest.drho.intvls.Moisture.ln.allB.p05) <- 2:(nrow(ttest.drho.intvls.Moisture.ln.allB.p05)+1)
+
+# calculate network properties from a list of edgelist
+ntwprop.edgels.intvls.PPS.ln.allB.p05 <- netwk.properties(edgels.intvls.PPS.ln.allB.p05)
+ntwprop.edgels.intvls.Moisture.ln.allB.p05 <- netwk.properties(edgels.intvls.Moisture.ln.allB.p05)
+
+## fungal dataset
+
+edgels.intvls.TN.ln.allF <- list(NULL)
+    for (i in 1:length(intvls.TN.ln.allF))
+	{
+		if (!is.atomic(intvls.TN.ln.allF[[i]]))
+		{edgels.intvls.TN.ln.allF[[i]] <- ps2edgels.bi(intvls.TN.ln.allF[[i]])}
+		else
+		{edgels.intvls.TN.ln.allF[[i]] <- 0}
+	print(paste("##########",i, "out of", length(intvls.TN.ln.allF),"##########", sep = " "))}
+edgels.intvls.Moisture.ln.allF <- list(NULL)
+    for (i in 1:length(intvls.Moisture.ln.allF))
+	{
+		if (!is.atomic(intvls.Moisture.ln.allF[[i]]))
+		{edgels.intvls.Moisture.ln.allF[[i]] <- ps2edgels.bi(intvls.Moisture.ln.allF[[i]])}
+		else
+		{edgels.intvls.Moisture.ln.allF[[i]] <- 0}
+	print(paste("##########",i, "out of", length(intvls.Moisture.ln.allF),"##########", sep = " "))}
+edgels.intvls.TOM.ln.allF <- list(NULL)
+    for (i in 1:length(intvls.TOM.ln.allF))
+	{
+		if (!is.atomic(intvls.TOM.ln.allF[[i]]))
+		{edgels.intvls.TOM.ln.allF[[i]] <- ps2edgels.bi(intvls.TOM.ln.allF[[i]])}
+		else
+		{edgels.intvls.TOM.ln.allF[[i]] <- 0}
+	print(paste("##########",i, "out of", length(intvls.TOM.ln.allF),"##########", sep = " "))}
+edgels.intvls.SSalt.ln.allF <- list(NULL)
+    for (i in 1:length(intvls.SSalt.ln.allF))
+	{
+		if (!is.atomic(intvls.SSalt.ln.allF[[i]]))
+		{edgels.intvls.SSalt.ln.allF[[i]] <- ps2edgels.bi(intvls.SSalt.ln.allF[[i]])}
+		else
+		{edgels.intvls.SSalt.ln.allF[[i]] <- 0}
+	print(paste("##########",i, "out of", length(intvls.SSalt.ln.allF),"##########", sep = " "))}
+edgels.intvls.AN.ln.allF <- list(NULL)
+    for (i in 1:length(intvls.AN.ln.allF))
+	{
+		if (!is.atomic(intvls.AN.ln.allF[[i]]))
+		{edgels.intvls.AN.ln.allF[[i]] <- ps2edgels.bi(intvls.AN.ln.allF[[i]])}
+		else
+		{edgels.intvls.AN.ln.allF[[i]] <- 0}
+	print(paste("##########",i, "out of", length(intvls.AN.ln.allF),"##########", sep = " "))}
+
+# p<0.05
+edgels.intvls.TN.ln.allF.p05 <- list(NULL)
+for (i in 1:length(edgels.intvls.TN.ln.allF))
+	{
+		if (!is.numeric(edgels.intvls.TN.ln.allF[[i]]))
+		{edgels.intvls.TN.ln.allF.p05[[i]] <- as.data.frame(edgels.intvls.TN.ln.allF[[i]])[edgels.intvls.TN.ln.allF[[i]][,"p.value"]<0.05,]}
+		else
+		{edgels.intvls.TN.ln.allF.p05[[i]] <- matrix(data = NA, ncol = 6, nrow = 0)
+		colnames(edgels.intvls.TN.ln.allF.p05[[i]])<-c("ASV1","ASV2","rho","p.value","ab1","ab2")}
+	}
+edgels.intvls.Moisture.ln.allF.p05 <- list(NULL)
+for (i in 1:length(edgels.intvls.Moisture.ln.allF))
+	{
+		if (!is.numeric(edgels.intvls.Moisture.ln.allF[[i]]))
+		{edgels.intvls.Moisture.ln.allF.p05[[i]] <- as.data.frame(edgels.intvls.Moisture.ln.allF[[i]])[edgels.intvls.Moisture.ln.allF[[i]][,"p.value"]<0.05,]}
+		else
+		{edgels.intvls.Moisture.ln.allF.p05[[i]] <- matrix(data = NA, ncol = 6, nrow = 0)
+		colnames(edgels.intvls.Moisture.ln.allF.p05[[i]])<-c("ASV1","ASV2","rho","p.value","ab1","ab2")}
+	}
+edgels.intvls.TOM.ln.allF.p05 <- list(NULL)
+for (i in 1:length(edgels.intvls.TOM.ln.allF))
+	{
+		if (!is.numeric(edgels.intvls.TOM.ln.allF[[i]]))
+		{edgels.intvls.TOM.ln.allF.p05[[i]] <- as.data.frame(edgels.intvls.TOM.ln.allF[[i]])[edgels.intvls.TOM.ln.allF[[i]][,"p.value"]<0.05,]}
+		else
+		{edgels.intvls.TOM.ln.allF.p05[[i]] <- matrix(data = NA, ncol = 6, nrow = 0)
+		colnames(edgels.intvls.TOM.ln.allF.p05[[i]])<-c("ASV1","ASV2","rho","p.value","ab1","ab2")}
+	}
+edgels.intvls.SSalt.ln.allF.p05 <- list(NULL)
+for (i in 1:length(edgels.intvls.SSalt.ln.allF))
+	{
+		if (!is.numeric(edgels.intvls.SSalt.ln.allF[[i]]))
+		{edgels.intvls.SSalt.ln.allF.p05[[i]] <- as.data.frame(edgels.intvls.SSalt.ln.allF[[i]])[edgels.intvls.SSalt.ln.allF[[i]][,"p.value"]<0.05,]}
+		else
+		{edgels.intvls.SSalt.ln.allF.p05[[i]] <- matrix(data = NA, ncol = 6, nrow = 0)
+		colnames(edgels.intvls.SSalt.ln.allF.p05[[i]])<-c("ASV1","ASV2","rho","p.value","ab1","ab2")}
+	}
+edgels.intvls.AN.ln.allF.p05 <- list(NULL)
+for (i in 1:length(edgels.intvls.AN.ln.allF))
+	{
+		if (!is.numeric(edgels.intvls.AN.ln.allF[[i]]))
+		{edgels.intvls.AN.ln.allF.p05[[i]] <- as.data.frame(edgels.intvls.AN.ln.allF[[i]])[edgels.intvls.AN.ln.allF[[i]][,"p.value"]<0.05,]}
+		else
+		{edgels.intvls.AN.ln.allF.p05[[i]] <- matrix(data = NA, ncol = 6, nrow = 0)
+		colnames(edgels.intvls.AN.ln.allF.p05[[i]])<-c("ASV1","ASV2","rho","p.value","ab1","ab2")}
+	}
+
+mergerho.intvls.TN.ln.allF.p05 <- merge.rho(edgels.intvls.TN.ln.allF.p05)
+mergerho.intvls.Moisture.ln.allF.p05 <- merge.rho(edgels.intvls.Moisture.ln.allF.p05)
+mergerho.intvls.TOM.ln.allF.p05 <- merge.rho(edgels.intvls.TOM.ln.allF.p05)
+mergerho.intvls.SSalt.ln.allF.p05 <- merge.rho(edgels.intvls.SSalt.ln.allF.p05)
+mergerho.intvls.AN.ln.allF.p05 <- merge.rho(edgels.intvls.AN.ln.allF.p05)
+
+# count times of rho occurred, and remove edges only formed once among all networks (rho.count = 1)
+mergerho.intvls.TN.ln.allF.p05$rho.count <- rowSums(!is.na(mergerho.intvls.TN.ln.allF.p05[,3:12]))
+mergerho.intvls.Moisture.ln.allF.p05$rho.count <- rowSums(!is.na(mergerho.intvls.Moisture.ln.allF.p05[,3:12]))
+mergerho.intvls.TOM.ln.allF.p05$rho.count <- rowSums(!is.na(mergerho.intvls.TOM.ln.allF.p05[,3:12]))
+mergerho.intvls.SSalt.ln.allF.p05$rho.count <- rowSums(!is.na(mergerho.intvls.SSalt.ln.allF.p05[,3:12]))
+mergerho.intvls.AN.ln.allF.p05$rho.count <- rowSums(!is.na(mergerho.intvls.AN.ln.allF.p05[,3:12]))
+
+mergerho.intvls.TN.ln.allF.p05.fltr <- mergerho.intvls.TN.ln.allF.p05[mergerho.intvls.TN.ln.allF.p05[,"rho.count"]>1,]
+mergerho.intvls.Moisture.ln.allF.p05.fltr <- mergerho.intvls.Moisture.ln.allF.p05[mergerho.intvls.Moisture.ln.allF.p05[,"rho.count"]>1,]
+mergerho.intvls.TOM.ln.allF.p05.fltr <- mergerho.intvls.TOM.ln.allF.p05[mergerho.intvls.TOM.ln.allF.p05[,"rho.count"]>1,]
+mergerho.intvls.SSalt.ln.allF.p05.fltr <- mergerho.intvls.SSalt.ln.allF.p05[mergerho.intvls.SSalt.ln.allF.p05[,"rho.count"]>1,]
+mergerho.intvls.AN.ln.allF.p05.fltr <- mergerho.intvls.AN.ln.allF.p05[mergerho.intvls.AN.ln.allF.p05[,"rho.count"]>1,]
+
+drho.intvls.TN.ln.allF.p05 <- drho(mergerho.intvls.TN.ln.allF.p05.fltr)
+drho.intvls.Moisture.ln.allF.p05 <- drho(mergerho.intvls.Moisture.ln.allF.p05.fltr)
+drho.intvls.TOM.ln.allF.p05 <- drho(mergerho.intvls.TOM.ln.allF.p05.fltr)
+drho.intvls.SSalt.ln.allF.p05 <- drho(mergerho.intvls.SSalt.ln.allF.p05.fltr)
+drho.intvls.AN.ln.allF.p05 <- drho(mergerho.intvls.AN.ln.allF.p05.fltr)
+
+# target core interactions present in 5 or more networks 
+mergerho.intvls.TN.ln.allF.p05.core <- mergerho.intvls.TN.ln.allF.p05[mergerho.intvls.TN.ln.allF.p05[,"rho.count"]>4,]
+mergerho.intvls.Moisture.ln.allF.p05.core <- mergerho.intvls.Moisture.ln.allF.p05[mergerho.intvls.Moisture.ln.allF.p05[,"rho.count"]>4,]
+mergerho.intvls.TOM.ln.allF.p05.core <- mergerho.intvls.TOM.ln.allF.p05[mergerho.intvls.TOM.ln.allF.p05[,"rho.count"]>4,]
+mergerho.intvls.SSalt.ln.allF.p05.core <- mergerho.intvls.SSalt.ln.allF.p05[mergerho.intvls.SSalt.ln.allF.p05[,"rho.count"]>4,]
+mergerho.intvls.AN.ln.allF.p05.core <- mergerho.intvls.AN.ln.allF.p05[mergerho.intvls.AN.ln.allF.p05[,"rho.count"]>4,]
+
+# ploting
+# intvls.ln
+drho.intvls.NNA.TN.ln.allF.p05 <- melt(drho.intvls.TN.ln.allF.p05)
+colnames(drho.intvls.NNA.TN.ln.allF.p05) <- c("trivial","intvl","drho")
+drho.intvls.NNA.TN.ln.allF.p05 <- drho.intvls.NNA.TN.ln.allF.p05[!is.na(drho.intvls.NNA.TN.ln.allF.p05$drho),]
+drho.intvls.NNA.TN.ln.allF.p05$intvl <- as.character(drho.intvls.NNA.TN.ln.allF.p05$intvl)
+
+drho.intvls.NNA.Moisture.ln.allF.p05 <- melt(drho.intvls.Moisture.ln.allF.p05)
+colnames(drho.intvls.NNA.Moisture.ln.allF.p05) <- c("trivial","intvl","drho")
+drho.intvls.NNA.Moisture.ln.allF.p05 <- drho.intvls.NNA.Moisture.ln.allF.p05[!is.na(drho.intvls.NNA.Moisture.ln.allF.p05$drho),]
+drho.intvls.NNA.Moisture.ln.allF.p05$intvl <- as.character(drho.intvls.NNA.Moisture.ln.allF.p05$intvl)
+
+drho.intvls.NNA.TOM.ln.allF.p05 <- melt(drho.intvls.TOM.ln.allF.p05)
+colnames(drho.intvls.NNA.TOM.ln.allF.p05) <- c("trivial","intvl","drho")
+drho.intvls.NNA.TOM.ln.allF.p05 <- drho.intvls.NNA.TOM.ln.allF.p05[!is.na(drho.intvls.NNA.TOM.ln.allF.p05$drho),]
+drho.intvls.NNA.TOM.ln.allF.p05$intvl <- as.character(drho.intvls.NNA.TOM.ln.allF.p05$intvl)
+
+drho.intvls.NNA.SSalt.ln.allF.p05 <- melt(drho.intvls.SSalt.ln.allF.p05)
+colnames(drho.intvls.NNA.SSalt.ln.allF.p05) <- c("trivial","intvl","drho")
+drho.intvls.NNA.SSalt.ln.allF.p05 <- drho.intvls.NNA.SSalt.ln.allF.p05[!is.na(drho.intvls.NNA.SSalt.ln.allF.p05$drho),]
+drho.intvls.NNA.SSalt.ln.allF.p05$intvl <- as.character(drho.intvls.NNA.SSalt.ln.allF.p05$intvl)
+
+drho.intvls.NNA.AN.ln.allF.p05 <- melt(drho.intvls.AN.ln.allF.p05)
+colnames(drho.intvls.NNA.AN.ln.allF.p05) <- c("trivial","intvl","drho")
+drho.intvls.NNA.AN.ln.allF.p05 <- drho.intvls.NNA.AN.ln.allF.p05[!is.na(drho.intvls.NNA.AN.ln.allF.p05$drho),]
+drho.intvls.NNA.AN.ln.allF.p05$intvl <- as.character(drho.intvls.NNA.AN.ln.allF.p05$intvl)
+
+drho.intvls.NNA.TN.ln.allF.p05$intvl <- as.numeric(drho.intvls.NNA.TN.ln.allF.p05$intvl)
+ggplot(drho.intvls.NNA.TN.ln.allF.p05, aes(x=intvl, y=drho)) +
+	geom_point(color = "#4f216d") + geom_smooth(method="loess", formula=y~x, fill = "#CAB2D6", color = "#6A3D9A") + 
+	theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+drho.intvls.NNA.Moisture.ln.allF.p05$intvl <- as.numeric(drho.intvls.NNA.Moisture.ln.allF.p05$intvl)
+ggplot(drho.intvls.NNA.Moisture.ln.allF.p05, aes(x=intvl, y=drho)) +
+	geom_point(color = "#4f216d") + geom_smooth(method="loess", formula=y~x, fill = "#CAB2D6", color = "#6A3D9A") + 
+	theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+drho.intvls.NNA.TOM.ln.allF.p05$intvl <- as.numeric(drho.intvls.NNA.TOM.ln.allF.p05$intvl)
+ggplot(drho.intvls.NNA.TOM.ln.allF.p05, aes(x=intvl, y=drho)) +
+	geom_point(color = "#4f216d") + geom_smooth(method="loess", formula=y~x, fill = "#CAB2D6", color = "#6A3D9A") + 
+	theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+drho.intvls.NNA.SSalt.ln.allF.p05$intvl <- as.numeric(drho.intvls.NNA.SSalt.ln.allF.p05$intvl)
+ggplot(drho.intvls.NNA.SSalt.ln.allF.p05, aes(x=intvl, y=drho)) +
+	geom_point(color = "#4f216d") + geom_smooth(method="loess", formula=y~x, fill = "#CAB2D6", color = "#6A3D9A") + 
+	theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+drho.intvls.NNA.AN.ln.allF.p05$intvl <- as.numeric(drho.intvls.NNA.AN.ln.allF.p05$intvl)
+ggplot(drho.intvls.NNA.AN.ln.allF.p05, aes(x=intvl, y=drho)) +
+	geom_point(color = "#4f216d") + geom_smooth(method="loess", formula=y~x, fill = "#CAB2D6", color = "#6A3D9A") + 
+	theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+# t.test difference significance between drhos and 0
+ttest.drho.intvls.TN.ln.allF.p05 <- as.data.frame(t.test(drho.intvls.TN.ln.allF.p05[,2], mu = 0)[c(2,3,5,6,7)])
+for (i in 3:ncol(drho.intvls.TN.ln.allF.p05))
+{
+	if (sum(!is.na(drho.intvls.TN.ln.allF.p05[,i])) > 1)
+	{ttest.drho.intvls.TN.ln.allF.p05 <- rbind(ttest.drho.intvls.TN.ln.allF.p05, as.data.frame(t.test(drho.intvls.TN.ln.allF.p05[,i], mu = 0)[c(2,3,5,6,7)]))}
+	else 
+	{ttest.drho.intvls.TN.ln.allF.p05 <- rbind(ttest.drho.intvls.TN.ln.allF.p05, NA)}
+}
+rownames(ttest.drho.intvls.TN.ln.allF.p05) <- 2:(nrow(ttest.drho.intvls.TN.ln.allF.p05)+1)
+
+ttest.drho.intvls.Moisture.ln.allF.p05 <- as.data.frame(t.test(drho.intvls.Moisture.ln.allF.p05[,2], mu = 0)[c(2,3,5,6,7)])
+for (i in 3:ncol(drho.intvls.Moisture.ln.allF.p05))
+{
+	if (sum(!is.na(drho.intvls.Moisture.ln.allF.p05[,i])) > 1) 
+	{ttest.drho.intvls.Moisture.ln.allF.p05 <- rbind(ttest.drho.intvls.Moisture.ln.allF.p05, as.data.frame(t.test(drho.intvls.Moisture.ln.allF.p05[,i], mu = 0)[c(2,3,5,6,7)]))}
+	else 
+	{ttest.drho.intvls.Moisture.ln.allF.p05 <- rbind(ttest.drho.intvls.Moisture.ln.allF.p05, NA)}
+}
+rownames(ttest.drho.intvls.Moisture.ln.allF.p05) <- 2:(nrow(ttest.drho.intvls.Moisture.ln.allF.p05)+1)
+
+ttest.drho.intvls.TOM.ln.allF.p05 <- as.data.frame(t.test(drho.intvls.TOM.ln.allF.p05[,2], mu = 0)[c(2,3,5,6,7)])
+for (i in 3:ncol(drho.intvls.TOM.ln.allF.p05))
+{
+	if (sum(!is.na(drho.intvls.TOM.ln.allF.p05[,i])) > 1)
+	{ttest.drho.intvls.TOM.ln.allF.p05 <- rbind(ttest.drho.intvls.TOM.ln.allF.p05, as.data.frame(t.test(drho.intvls.TOM.ln.allF.p05[,i], mu = 0)[c(2,3,5,6,7)]))}
+	else 
+	{ttest.drho.intvls.TOM.ln.allF.p05 <- rbind(ttest.drho.intvls.TOM.ln.allF.p05, NA)}
+}
+rownames(ttest.drho.intvls.TOM.ln.allF.p05) <- 2:(nrow(ttest.drho.intvls.TOM.ln.allF.p05)+1)
+
+ttest.drho.intvls.SSalt.ln.allF.p05 <- as.data.frame(t.test(drho.intvls.SSalt.ln.allF.p05[,2], mu = 0)[c(2,3,5,6,7)])
+for (i in 3:ncol(drho.intvls.SSalt.ln.allF.p05))
+{
+	if (sum(!is.na(drho.intvls.SSalt.ln.allF.p05[,i])) > 1) 
+	{ttest.drho.intvls.SSalt.ln.allF.p05 <- rbind(ttest.drho.intvls.SSalt.ln.allF.p05, as.data.frame(t.test(drho.intvls.SSalt.ln.allF.p05[,i], mu = 0)[c(2,3,5,6,7)]))}
+	else 
+	{ttest.drho.intvls.SSalt.ln.allF.p05 <- rbind(ttest.drho.intvls.SSalt.ln.allF.p05, NA)}
+}
+rownames(ttest.drho.intvls.SSalt.ln.allF.p05) <- 2:(nrow(ttest.drho.intvls.SSalt.ln.allF.p05)+1)
+
+ttest.drho.intvls.AN.ln.allF.p05 <- as.data.frame(t.test(drho.intvls.AN.ln.allF.p05[,2], mu = 0)[c(2,3,5,6,7)])
+for (i in 3:ncol(drho.intvls.AN.ln.allF.p05))
+{
+	if (sum(!is.na(drho.intvls.AN.ln.allF.p05[,i])) > 1)
+	{ttest.drho.intvls.AN.ln.allF.p05 <- rbind(ttest.drho.intvls.AN.ln.allF.p05, as.data.frame(t.test(drho.intvls.AN.ln.allF.p05[,i], mu = 0)[c(2,3,5,6,7)]))}
+	else 
+	{ttest.drho.intvls.AN.ln.allF.p05 <- rbind(ttest.drho.intvls.AN.ln.allF.p05, NA)}
+}
+rownames(ttest.drho.intvls.AN.ln.allF.p05) <- 2:(nrow(ttest.drho.intvls.AN.ln.allF.p05)+1)
+
+# calculate network properties from a list of edgelist
+ntwprop.edgels.intvls.TN.ln.allF.p05 <- netwk.properties(edgels.intvls.TN.ln.allF.p05)
+ntwprop.edgels.intvls.Moisture.ln.allF.p05 <- netwk.properties(edgels.intvls.Moisture.ln.allF.p05)
+ntwprop.edgels.intvls.TOM.ln.allF.p05 <- netwk.properties(edgels.intvls.TOM.ln.allF.p05)
+ntwprop.edgels.intvls.SSalt.ln.allF.p05 <- netwk.properties(edgels.intvls.SSalt.ln.allF.p05)
+ntwprop.edgels.intvls.AN.ln.allF.p05 <- netwk.properties(edgels.intvls.AN.ln.allF.p05)
