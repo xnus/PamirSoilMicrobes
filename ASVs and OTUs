@@ -1,0 +1,166 @@
+library(dada2)
+library(ShortRead)
+library(Biostrings)
+library(ape)
+library(kmer)
+library(phyloseq)
+
+# start from nochim variables generated from DADA2 workflow (Callahan, et al., 2016; doi:10.12688/f1000research.8986.2)
+# here is the code example for bacterial dataset.
+
+seqtabB.nochim <- seqtabB.nochim.4
+
+he<-function(x){
+  x<-as.data.frame(x)
+  x[dim(x)[1]+1,]<-colSums(x)
+  return(x[dim(x)[1],])
+  }
+
+################ 1. generate ASV table
+briefToSeqB <- colnames(seqtabB.nochim)
+names(briefToSeqB) <- paste0("B_ASV_", seq(ncol(seqtabB.nochim))) # formatting ASV labels
+
+################ 2. taxonomy assignment for the first time, to ASVs.
+# reference for identification: "silva_nr99_v138.1_wSpecies_train_set.fa.gz"
+fastaRef.silva <- "YOUR PATH FOR THE REFERENCE" 
+allB.taxidbp75.silva <- assignTaxonomy(seqtabB.nochim, refFasta = fastaRef.silva, minBoot = 75, outputBootstraps = TRUE,  tryRC = TRUE, multithread = TRUE)
+
+allB.taxidbp75.silva.ASVs <- allB.taxidbp75.silva
+rownames(allB.taxidbp75.silva.ASVs[[1]]) <- names(briefToSeqB);rownames(allB.taxidbp75.silva.ASVs[[2]]) <- names(briefToSeqB)
+allB.taxidbp75 <- allB.taxidbp75.silva
+allB.taxidbp75.dfm1 <- as.data.frame(allB.taxidbp75[[1]]) 
+allB.taxidbp75.dfm2 <- as.data.frame(allB.taxidbp75[[2]])
+allB.taxidbp75.ASVs <- allB.taxidbp75.silva.ASVs
+allB.taxidbp75.dfm1.ASVs <- as.data.frame(allB.taxidbp75.ASVs[[1]]) 
+allB.taxidbp75.dfm2.ASVs <- as.data.frame(allB.taxidbp75.ASVs[[2]])
+
+# NAB are ASVs failed to be annotated at species level, and nonNAB are those successed.
+NAB <- allB.taxidbp75.dfm1[is.na(allB.taxidbp75.dfm1$Genus),] #Never use =='NA' 
+nonNAB <- allB.taxidbp75.dfm1[!is.na(allB.taxidbp75.dfm1$Genus),]
+NAB.ASVs <- allB.taxidbp75.dfm1.ASVs[is.na(allB.taxidbp75.dfm1.ASVs$Genus),] #Never use =='NA' 
+nonNAB.ASVs <- allB.taxidbp75.dfm1.ASVs[!is.na(allB.taxidbp75.dfm1.ASVs$Genus),]
+
+NAB.seqs <- as.data.frame(briefToSeqB[rownames(NAB.ASVs)]); rownames(NAB.seqs) <- rownames(NAB.ASVs)
+
+################ 3. select sequences of NABs and cluster them into OTUs
+# if the sequence are equal in lengths
+NAB.seqs.matrix <- as.matrix(cbind(rownames(NAB.seqs),data.frame(NAB.seqs, row.names=NULL)))
+NAB.seqs.dnabin <- strsplit(NAB.seqs.matrix[,2],"")
+NAB.seqs.dnabin <- lapply(NAB.seqs.dnabin, tolower)
+NAB.seqs.dnabin <- lapply(NAB.seqs.dnabin, t)
+names(NAB.seqs.dnabin) <- NAB.seqs.matrix[,1]
+NAB.seqs.dnabin <- as.DNAbin(NAB.seqs.dnabin)
+
+# in case sequences are not equal:
+# NAF.seqs.matrix <- as.matrix(cbind(rownames(NAF.seqs),data.frame(NAF.seqs, row.names=NULL)))
+# NAF.seqs.dnabin <- sapply(strsplit(NAF.seqs.matrix[,2],""), t)
+# NAF.seqs.dnabin <- sapply(NAF.seqs.dnabin, tolower)
+# names(NAF.seqs.dnabin) <- NAF.seqs.matrix[,1]
+# NAF.seqs.dnabin <- as.dnabin(NAF.seqs.dnabin)
+
+set.seed(999)
+
+NAB.OTUs <- otu(NAB.seqs.dnabin, k = 5, threshold = 0.97, nstart = 20)
+
+# generate a namelist for OTUs
+NAB.OTUs.df <- cbind(read.table(text = names(NAB.OTUs)), NAB.OTUs)
+NAB.OTUs.reps.df <- NAB.OTUs.df[grepl("\\*",NAB.OTUs.df[,1]),] 
+NAB.OTUs.seqtab.t <- as.data.frame(t(seqtabB.nochim[,rownames(NAB)]))
+NAB.OTUs.list <- NAB.OTUs[grepl("\\*",names(NAB.OTUs))]
+NAB.OTUs.seq <- as.data.frame(briefToSeqB)[gsub("\\*", "", names(NAB.OTUs.list)),]
+NAB.OTUs.seq <- as.data.frame(NAB.OTUs.seq)
+rownames(NAB.OTUs.seq) <- gsub("\\*", "", names(NAB.OTUs.list))
+
+################ 4. taxonomy assignment for the second time, to OTUs.
+# generate sequence table due to OTUs
+NAB.OTUs.seqtab.t.he <- data.frame(NULL)
+for(k in 1:length(NAB.OTUs.list))
+	{
+	NAB.OTUs.seqtab.t.he<-rbind(NAB.OTUs.seqtab.t.he,he(NAB.OTUs.seqtab.t[NAB.OTUs.df$NAB.OTUs==NAB.OTUs.list[k],]))
+	}
+
+NAB.ASVs.OTUs.seqs.list <- as.data.frame(cbind(NAB.seqs.matrix,NAB.OTUs))
+colnames(NAB.ASVs.OTUs.seqs.list) <- c("ASVs","seqs","OTUs")
+NAB.OTUs.seqtab.t.he # replace OTUs in its rowname to sequences
+
+rownames(NAB.OTUs.seqtab.t.he) <- NAB.OTUs.seq[,1]
+
+NAB.OTUs.seqtab.he <- t(NAB.OTUs.seqtab.t.he)
+
+NAB.taxidbp75.silva <- assignTaxonomy(NAB.OTUs.seqtab.he, refFasta = fastaRef.silva, minBoot = 75, outputBootstraps = TRUE, tryRC = TRUE, multithread = TRUE)
+
+NAB.taxidbp75 <- NAB.taxidbp75.silva
+
+# merge OTUtabs and ASVtables
+
+NAB.OTUs2.list <- paste("B_OTU_", NAB.OTUs.list, sep="") # formatting OTU labels
+
+NAB.OTUs2.seqtab.t.he <- NAB.OTUs.seqtab.t.he; rownames(NAB.OTUs2.seqtab.t.he) <- NAB.OTUs2.list 
+NAB.OTUs2.seqtab.he <- NAB.OTUs.seqtab.he; colnames(NAB.OTUs2.seqtab.he) <- NAB.OTUs2.list 
+
+NAB.OTUs <- NAB.taxidbp75[[1]]
+NAB.OTUs2 <- NAB.OTUs; rownames(NAB.OTUs2) <- NAB.OTUs2.list 
+
+nonNAB.seqtab.t <- seqtabB.nochim[,rownames(nonNAB)] # generate seqtable of nonNAB
+nonNAB.ASVtab.t <- nonNAB.seqtab.t; colnames(nonNAB.ASVtab.t) <- rownames(nonNAB.ASVs) # change labels of seqtab due to ASVtable
+nonNAB.ASVtab <- t(nonNAB.ASVtab.t)
+
+allB.tax_table.taxidbp75 <- rbind(nonNAB.ASVs, NAB.OTUs2)
+allB.otu_table.taxidbp75 <- cbind(t(nonNAB.ASVtab), NAB.OTUs2.seqtab.he)
+
+
+# remove non-bacteria, chloroplast, and mitochondria sequences
+allB.ASVs.silva <- as.data.frame(allB.taxidbp75.silva[[1]])
+nonNAB.ASVs.silva <- allB.ASVs.silva[!is.na(allB.ASVs.silva$Genus),]
+nonNAB.Bac.ASVs <- nonNAB.ASVs.silva[nonNAB.ASVs.silva$Kingdom == "Bacteria",]
+nonNAB.Bac.ASVs <- nonNAB.Bac.ASVs[nonNAB.Bac.ASVs$Phylum != "Cyanobacteria"|is.na(nonNAB.Bac.ASVs$Phylum),]
+nonNAB.Bac.ASVs <- nonNAB.Bac.ASVs[nonNAB.Bac.ASVs$Order != "Rickettsiales"|is.na(nonNAB.Bac.ASVs$Order),]
+nonNAB.nonBac.ASVs <- nonNAB.ASVs.silva[!(rownames(nonNAB.ASVs.silva) %in% rownames(nonNAB.Bac.ASVs)),]
+
+NAB.ASVs.silva <- as.data.frame(NAB.taxidbp75.silva[[1]]) 
+rownames(NAB.ASVs.silva) <- NAB.OTUs2.list
+
+NAB.Bac.ASVs <- NAB.ASVs.silva[NAB.ASVs.silva$Kingdom == "Bacteria",]
+NAB.Bac.ASVs <- NAB.Bac.ASVs[NAB.Bac.ASVs$Phylum != "Cyanobacteria"|is.na(NAB.Bac.ASVs$Phylum),]
+NAB.Bac.ASVs <- NAB.Bac.ASVs[NAB.Bac.ASVs$Order != "Rickettsiales"|is.na(NAB.Bac.ASVs$Order),]
+NAB.nonBac.ASVs <- NAB.ASVs.silva[!(rownames(NAB.ASVs.silva) %in% rownames(NAB.Bac.ASVs)),]
+
+nonBacteriaASVs <- append(rownames(nonNAB.nonBac.ASVs), rownames(NAB.nonBac.ASVs))
+goodAsvs <- rownames(allB.tax_table.taxidbp75)[!(rownames(allB.tax_table.taxidbp75) %in% nonBacteriaASVs)]
+allB.tax_table.taxidbp75.flt <- allB.tax_table.taxidbp75[goodAsvs,]
+allB.otu_table.taxidbp75.flt <- allB.otu_table.taxidbp75[,goodAsvs]
+
+
+################ 5. adjust tax table
+
+allB.tax <- allB.tax_table.taxidbp75.flt
+
+allB.tax.clean <- allB.tax
+allB.tax.clean <- sapply(allB.tax.clean, as.character)# It's possibly because the data.frame is too long. Change it to character as above.但是这样之后就没有rownames了，还得重新加上
+allB.tax.clean[is.na(allB.tax.clean)] <- ""
+rownames(allB.tax.clean) <- rownames(allB.tax)
+
+allB.tax$asvs <- rownames(allB.tax)
+
+for (i in 1:nrow(allB.tax.clean)){
+  if (allB.tax.clean[i,2] == ""){
+    allB.tax.clean[i,2] <- paste(allB.tax.clean[i,1], allB.tax$asvs[i], sep = "_")
+    allB.tax.clean[i, 2:7] <- allB.tax.clean[i,2]
+  } else if (allB.tax.clean[i,3] == ""){
+    allB.tax.clean[i,3] <- paste(allB.tax.clean[i,2], allB.tax$asvs[i], sep = "_")
+    allB.tax.clean[i, 3:7] <- allB.tax.clean[i,3]
+  } else if (allB.tax.clean[i,4] == ""){
+    allB.tax.clean[i,4] <- paste(allB.tax.clean[i,3], allB.tax$asvs[i], sep = "_")
+    allB.tax.clean[i, 4:7] <- allB.tax.clean[i,4]
+  } else if (allB.tax.clean[i,5] == ""){
+    allB.tax.clean[i,5] <- paste(allB.tax.clean[i,4], allB.tax$asvs[i], sep = "_")
+    allB.tax.clean[i, 5:7] <- allB.tax.clean[i,5]
+  } else if (allB.tax.clean[i,6] == ""){
+    allB.tax.clean[i,6] <- paste(allB.tax.clean[i,5], allB.tax$asvs[i], sep = "_")
+    allB.tax.clean[i, 6:7] <- allB.tax.clean[i,6]
+  } else if (allB.tax.clean[i,7] == ""){
+    allB.tax.clean[i,7] <- paste(allB.tax.clean[i,6], allB.tax$asvs[i], sep = "_")
+  } else {
+  allB.tax.clean[i,7] <- paste(allB.tax.clean[i,6], allB.tax.clean[i,7], sep = "_")
+  }
+}
